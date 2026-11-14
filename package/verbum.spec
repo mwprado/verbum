@@ -1,4 +1,4 @@
-# Fedora / EPEL 10. Requires Python >= 3.11 and GTK 4/libadwaita.
+# Fedora / EPEL 9 and 10. Requires Python >= 3.9 and GTK 4/libadwaita.
 # Override upstream_repo if building before the GitHub repository is renamed.
 %{!?upstream_repo:%global upstream_repo verbum}
 # Source release tag must exist before building the SRPM.
@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT
@@ -15,6 +15,10 @@ Source0:        %{url}/archive/refs/tags/verbum-%{version}.tar.gz#/%{name}-%{ver
 
 BuildArch:      noarch
 BuildRequires:  python3-devel
+%if 0%{?rhel} == 9
+BuildRequires:  python3-tomli
+Requires:       python3-tomli
+%endif
 BuildRequires:  python3-gobject
 BuildRequires:  gobject-introspection
 BuildRequires:  python3-cairo
@@ -24,7 +28,7 @@ BuildRequires:  desktop-file-utils
 BuildRequires:  libappstream-glib
 BuildRequires:  shared-mime-info
 
-Requires:       python3 >= 3.11
+Requires:       python3 >= 3.9
 Requires:       python3-gobject
 Requires:       gobject-introspection
 Requires:       python3-cairo
@@ -93,6 +97,10 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-4
+- Support EPEL 9 system Python 3.9 with the tomli backport
+- Retain Cairo introspection dependencies and all build tests
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-3
 - Require GObject introspection typelibs and Python Cairo in build and runtime environments
 - Fix GTK import smoke test in minimal Fedora 45 Mock chroots

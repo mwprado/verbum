@@ -4,7 +4,7 @@ import json
 import sys
 import sqlite3
 import subprocess
-import tomllib
+from .compat import tomllib
 from pathlib import Path
 from .core import Registry
 from .catalog import catalog_list

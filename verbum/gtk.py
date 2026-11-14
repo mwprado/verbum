@@ -1,7 +1,7 @@
 """Native GTK4/libadwaita frontend for Verbum."""
 import concurrent.futures
 import tempfile
-import tomllib
+from .compat import tomllib
 import threading
 from pathlib import Path
 

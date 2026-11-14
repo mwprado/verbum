@@ -3,7 +3,7 @@
 License claims are metadata, not a legal determination. Default to no redistribution.
 """
 import re
-import tomllib
+from .compat import tomllib
 from pathlib import Path
 from urllib.parse import urlsplit
 
