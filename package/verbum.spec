@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT
@@ -16,6 +16,8 @@ Source0:        %{url}/archive/refs/tags/verbum-%{version}.tar.gz#/%{name}-%{ver
 BuildArch:      noarch
 BuildRequires:  python3-devel
 BuildRequires:  python3-gobject
+BuildRequires:  gobject-introspection
+BuildRequires:  python3-cairo
 BuildRequires:  gtk4
 BuildRequires:  libadwaita
 BuildRequires:  desktop-file-utils
@@ -24,6 +26,8 @@ BuildRequires:  shared-mime-info
 
 Requires:       python3 >= 3.11
 Requires:       python3-gobject
+Requires:       gobject-introspection
+Requires:       python3-cairo
 Requires:       gtk4
 Requires:       libadwaita
 Requires:       gstreamer1
@@ -89,6 +93,10 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-3
+- Require GObject introspection typelibs and Python Cairo in build and runtime environments
+- Fix GTK import smoke test in minimal Fedora 45 Mock chroots
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-2
 - Add reproducible SCM source build for COPR
 
