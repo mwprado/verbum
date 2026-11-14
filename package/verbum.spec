@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT
@@ -89,7 +89,10 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
-* Sat Nov 14 2026 Moacyr Prado - 0.4.3-1
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-2
+- Add reproducible SCM source build for COPR
+
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-1
 - Initial independent Verbum RPM packaging
 - Include GNOME launcher, SVG icon, AppStream metadata and BGL MIME integration
 - Read embedded VLF resources without the legacy archive reader
