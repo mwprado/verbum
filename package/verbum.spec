@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT
@@ -41,8 +41,16 @@ Requires:       hicolor-icon-theme
 Requires:       shared-mime-info
 Requires:       desktop-file-utils
 Requires:       xdg-utils
-# PyGlossary is not guaranteed to exist in the target repositories.
-Recommends:     (python3dist(pyglossary) >= 5 with python3dist(pyglossary) < 6)
+# BGL import is part of the advertised GUI functionality, so keep the
+# compatible PyGlossary runtime mandatory. EPEL 9 uses Python 3.9 and
+# therefore needs the 4.x line; newer targets use PyGlossary 5.x.
+%if 0%{?rhel} == 9
+Requires:       python3dist(pyglossary) >= 4.6.1
+Requires:       python3dist(pyglossary) < 5
+%else
+Requires:       python3dist(pyglossary) >= 5
+Requires:       python3dist(pyglossary) < 6
+%endif
 
 %description
 Verbum is a multilingual lexical service and native GNOME dictionary
@@ -50,7 +58,7 @@ application. It imports local dictionaries into Verbum Lexical Format
 (VLF), a SQLite-based storage format, and supports ranked lexical
 search, spelling suggestions, and contextual Longman audio.
 
-Babylon BGL import requires the optional PyGlossary 5.x dependency.
+Babylon BGL import uses PyGlossary, installed as a required runtime dependency.
 Dictionary contents are not distributed with this package.
 
 %prep
@@ -97,6 +105,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-5
+- Make PyGlossary a required runtime dependency for Babylon BGL import
+- Use the Python 3.9-compatible PyGlossary 4.x line on EPEL 9
+- Use PyGlossary 5.x on EPEL 10 and Fedora
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-4
 - Support EPEL 9 system Python 3.9 with the tomli backport
 - Retain Cairo introspection dependencies and all build tests
