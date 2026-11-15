@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        15%{?dist}
+Release:        16%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-16
+- Render embedded dictionary illustrations automatically in entry details
+- Show LDOCE5 thumbnails in an illustration gallery
+- Keep full-size image access available from each illustration
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-15
 - Resolve LDOCE5 picture resources by unique logical-path suffix
 - Support SKN catalogs with additional internal picture directories
