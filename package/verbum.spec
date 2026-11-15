@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        21%{?dist}
+Release:        22%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,12 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-22
+- Normalize legacy Pickle/PKLZ records to JSON-safe VLF primitives
+- Decode bytes and convert tuples recursively before indexing
+- Generate ASCII-safe legacy dictionary identifiers from accented filenames
+- Add coverage for accented PKLZ filenames and byte-based records
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-21
 - Reproduce original CDB first-inserted precedence for unresolved duplicate media keys
 - Prefer XML path disambiguation and identical-content deduplication first
