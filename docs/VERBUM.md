@@ -412,3 +412,6 @@ Successful records are marked `recovered` in the JSONL log and include `recovere
 Legacy PKLZ/Pickle entries are normalized conservatively before publication to VLF. When a flattened definition begins with an unambiguous etymology, grammatical category and a numbered sequence starting at 1, Verbum preserves the complete original text in `raw_definition` and additionally exposes `etymology`, `grammar` and structured `senses`. Sense numbering must increase consecutively; a reset or jump ends the structured region rather than allowing the importer to guess across another embedded headword or section.
 
 The GTK detail view renders homograph numbers beside the headword and numbered senses as compact rows. Unclassified legacy tail material remains visible under “Outras entradas e locuções”, and etymology is presented as its own section.
+
+
+The “Outras entradas e locuções” section is intentionally compact: only embedded headword/locution titles are exposed as `legacy_entries`. Their definitions remain preserved in `legacy_tail` and `raw_definition` but are not rendered in that section, avoiding an unreadable duplicate wall of text.
