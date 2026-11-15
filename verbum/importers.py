@@ -118,12 +118,75 @@ class _LongmanMediaLoader:
                     self.process.wait()
 
 
-class _RestrictedUnpickler(pickle.Unpickler):
-    """Unpickler that never resolves globals, classes or functions."""
-    def find_class(self, module, name):
-        raise pickle.UnpicklingError(
-            "objetos Python externos não são permitidos: " + module + "." + name
+class _LegacyProxy:
+    """Inert stand-in for a class referenced by an old pickle."""
+    __legacy_module__ = ""
+    __legacy_name__ = ""
+
+    def __new__(cls, *args, **kwargs):
+        return object.__new__(cls)
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __setstate__(self, state):
+        if isinstance(state, dict):
+            self.__dict__.update(state)
+        else:
+            self.__dict__["_legacy_state"] = state
+
+    def __setitem__(self, key, value):
+        self.__dict__.setdefault("_legacy_items", {})[key] = value
+
+    def append(self, value):
+        self.__dict__.setdefault("_legacy_sequence", []).append(value)
+
+
+_LEGACY_PROXY_TYPES = {}
+
+
+def _legacy_proxy_type(module, name):
+    key = (str(module), str(name))
+    cls = _LEGACY_PROXY_TYPES.get(key)
+    if cls is None:
+        safe = "".join(ch if ch.isalnum() else "_" for ch in name) or "Object"
+        cls = type(
+            "_Legacy_" + safe,
+            (_LegacyProxy,),
+            {"__legacy_module__": key[0], "__legacy_name__": key[1]},
         )
+        _LEGACY_PROXY_TYPES[key] = cls
+    return cls
+
+
+def _legacy_reconstructor(cls, base, state):
+    """Safe replacement for copyreg._reconstructor.
+
+    It deliberately ignores the serialized base class and constructor state:
+    only inert proxy classes created by this module may be instantiated.
+    """
+    if not isinstance(cls, type) or not issubclass(cls, _LegacyProxy):
+        raise pickle.UnpicklingError("classe legada inválida")
+    return object.__new__(cls)
+
+
+class _RestrictedUnpickler(pickle.Unpickler):
+    """Recover legacy data without importing or executing serialized classes."""
+    _SAFE_BUILTINS = {
+        "object": object,
+        "set": set,
+        "frozenset": frozenset,
+    }
+
+    def find_class(self, module, name):
+        if module in ("copyreg", "copy_reg") and name == "_reconstructor":
+            return _legacy_reconstructor
+        if module in ("builtins", "__builtin__") and name in self._SAFE_BUILTINS:
+            return self._SAFE_BUILTINS[name]
+        # Do not import the referenced module. Unknown classes/functions are
+        # represented by inert proxy types; REDUCE/NEWOBJ therefore cannot
+        # execute the original application code.
+        return _legacy_proxy_type(module, name)
 
 
 def _validate_pickle_value(value, *, depth=0, items=None):
@@ -136,9 +199,12 @@ def _validate_pickle_value(value, *, depth=0, items=None):
         raise ValueError("Pickle legado contém objetos demais.")
     if value is None or isinstance(value, (str, bytes, int, float, bool)):
         return
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, (list, tuple, set, frozenset)):
         for item in value:
             _validate_pickle_value(item, depth=depth + 1, items=items)
+        return
+    if isinstance(value, _LegacyProxy):
+        _validate_pickle_value(value.__dict__, depth=depth + 1, items=items)
         return
     if isinstance(value, dict):
         for key, item in value.items():
@@ -164,7 +230,7 @@ def _load_legacy_pickle(source):
     except (pickle.UnpicklingError, EOFError, AttributeError, ValueError, TypeError) as exc:
         raise ValueError("Pickle legado inválido ou não seguro: " + str(exc)) from exc
     _validate_pickle_value(value, items=[0])
-    return value
+    return _json_safe_legacy(value)
 
 
 def _json_safe_legacy(value):
@@ -173,8 +239,22 @@ def _json_safe_legacy(value):
         return value
     if isinstance(value, bytes):
         return value.decode("utf-8", errors="replace")
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, (list, tuple, set, frozenset)):
         return [_json_safe_legacy(item) for item in value]
+    if isinstance(value, _LegacyProxy):
+        attrs = {
+            key: item for key, item in value.__dict__.items()
+            if key not in ("_legacy_items", "_legacy_sequence", "_legacy_state")
+        }
+        if attrs:
+            return _json_safe_legacy(attrs)
+        if "_legacy_items" in value.__dict__:
+            return _json_safe_legacy(value.__dict__["_legacy_items"])
+        if "_legacy_sequence" in value.__dict__:
+            return _json_safe_legacy(value.__dict__["_legacy_sequence"])
+        if "_legacy_state" in value.__dict__:
+            return _json_safe_legacy(value.__dict__["_legacy_state"])
+        return {}
     if isinstance(value, dict):
         result = {}
         for key, item in value.items():
@@ -213,7 +293,11 @@ def _legacy_definition(value):
 def _legacy_entry(record, lemma=None):
     if isinstance(record, dict):
         entry = _json_safe_legacy(record)
-        candidate = entry.get("lemma") or entry.get("headword") or entry.get("word") or entry.get("termo") or lemma
+        candidate = (
+            entry.get("lemma") or entry.get("headword") or entry.get("word")
+            or entry.get("termo") or entry.get("verbete") or entry.get("palavra")
+            or lemma
+        )
         if candidate is None:
             raise ValueError("Registro Pickle sem lema.")
         if isinstance(candidate, bytes):
