@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        52%{?dist}
+Release:        53%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,14 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-53
+- Keep the primary search permanently in the top header
+- Replace separate dictionary navigation controls with one compact bottom bar
+- Put A-Z, Ir para, previous/next page and page number in the same web-like bar
+- Make Ir para open the page containing the exact headword and highlight it
+- Keep nearest-page positioning when an exact headword is not present
+- Reduce visible dictionary provenance to one muted source line
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-52
 - Skip fully empty legacy sequence records before tuple/list entry conversion
 - Prevent blank tuple/list records from becoming empty-lemma entries
