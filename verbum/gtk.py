@@ -700,8 +700,7 @@ class Window(Adw.ApplicationWindow):
             self.preferences.hide()
         fmt_id = m.get("source_format")
         if fmt_id == "idm-skn":
-            self.status.set_text("Reconstrua esta base pelo conversor externo.")
-            return
+            fmt_id = "longman"
         fmt = next((v for v in IMPORT_FORMATS if v["id"] == fmt_id), None)
         if fmt is None:
             fmt = next((v for v in IMPORT_FORMATS if v["id"] == m.get("distribution", {}).get("importer")), None)
