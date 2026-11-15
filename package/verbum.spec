@@ -125,7 +125,7 @@ update-mime-database mime-check
 %changelog
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-33
 - Write unrecoverable Longman media to a private JSONL recovery queue
-- Record archive, logical resource name, failure reason and pending status
+- Record archive, logical name, media type, extension, failure reason and pending status
 - Return and report the recovery-log path after import
 - Keep recovery logs outside VLF for later extraction and decoder experiments
 - Document the recovery-log format and location
