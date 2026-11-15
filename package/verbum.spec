@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        36%{?dist}
+Release:        37%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-37
+- Fix legacy homograph regex escaping introduced in the Aurélio normalization
+- Restore stripping of trailing markers such as $1$ and $3$
+- Keep the existing regression tests as the packaging gate
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-36
 - Fix RPM install section accidentally executing verbum-ldoce5-recover
 - Install the recovery helper only under buildroot during package assembly
