@@ -50,6 +50,11 @@ def _locations(source, archive, signature):
         # deliberately disabled rather than resolved arbitrarily.
         _add_location(result, full, location)
         if clean_dirs:
+            # Match the original LDOCE5 file-map semantics. Pictures are
+            # addressed by the first logical directory (thumbnail/fullsize)
+            # plus the filename, not by the deepest physical directory.
+            if archive == "picture":
+                _add_location(result, clean_dirs[0] + "/" + name, location)
             _add_location(result, clean_dirs[-1] + "/" + name, location)
         _add_location(result, name, location)
     return result, full_paths
