@@ -405,3 +405,10 @@ Successful records are marked `recovered` in the JSONL log and include `recovere
 
 
 . In the modern Aurélio presentation, these numbered entries are shown as separate numbered headword blocks, while the senses inside each block have their own numbering. Verbum removes the implementation marker from the displayed/searchable lemma, preserves the marked form as `source_lemma`, and records the numeric value as `homograph`. When an unmarked `lema_original` is available, it remains the preferred lemma, but a matching marked legacy field is still inspected so the homograph index is not lost.
+
+
+### Structured legacy dictionary presentation
+
+Legacy PKLZ/Pickle entries are normalized conservatively before publication to VLF. When a flattened definition begins with an unambiguous etymology, grammatical category and a numbered sequence starting at 1, Verbum preserves the complete original text in `raw_definition` and additionally exposes `etymology`, `grammar` and structured `senses`. Sense numbering must increase consecutively; a reset or jump ends the structured region rather than allowing the importer to guess across another embedded headword or section.
+
+The GTK detail view renders homograph numbers beside the headword and numbered senses as compact rows. Unclassified legacy tail material remains visible under “Outras entradas e locuções”, and etymology is presented as its own section.
