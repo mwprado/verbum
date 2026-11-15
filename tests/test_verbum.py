@@ -222,5 +222,54 @@ class VerbumTests(unittest.TestCase):
             rows = list(pickle_entries(source))
             self.assertEqual(rows[0]["lemma"], "seguro")
 
+    def test_pickle_top_level_lemma_named_palavra_does_not_collapse_dictionary(self):
+        import gzip
+        import pickle
+        from verbum.importers import import_dictionary
+
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "dicionario-aurelio.pklz"
+            source.write_bytes(gzip.compress(pickle.dumps({
+                "casa": {
+                    "descricao": "Edifício destinado à habitação.",
+                    "definicao_html": "<b>casa</b>",
+                    "lema_original": "casa",
+                    "alternativas": [],
+                    "arquivo_origem": "Aurelio_pt_pt.BGL",
+                },
+                "palavra": {
+                    "descricao": "Unidade lexical.",
+                    "lema_original": "palavra",
+                    "arquivo_origem": "Aurelio_pt_pt.BGL",
+                },
+                "verbete": {
+                    "descricao": "Entrada de dicionário.",
+                    "lema_original": "verbete",
+                    "arquivo_origem": "Aurelio_pt_pt.BGL",
+                },
+            }, protocol=4)))
+
+            result = import_dictionary(self.registry, None, source, "pickle")
+            self.assertEqual(result["entries"], 3)
+            casa = self.registry.search("casa", mode="exact")
+            self.assertEqual(len(casa), 1)
+            self.assertEqual(casa[0]["entry"]["lemma"], "casa")
+            self.assertIn("habitação", casa[0]["entry"]["definition"])
+
+    def test_pickle_single_entry_scalar_verbete_is_still_supported(self):
+        import gzip
+        import pickle
+        from verbum.importers import pickle_entries
+
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "single.pklz"
+            source.write_bytes(gzip.compress(pickle.dumps({
+                "verbete": "casa",
+                "descricao": "Edifício destinado à habitação.",
+            }, protocol=4)))
+            rows = list(pickle_entries(source))
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["lemma"], "casa")
+
 if __name__ == "__main__":
     unittest.main()
