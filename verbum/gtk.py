@@ -1196,21 +1196,55 @@ class Window(Adw.ApplicationWindow):
 
     def choose_source(self, fmt, rebuild=None):
         action = Gtk.FileChooserAction.SELECT_FOLDER if fmt["directory"] else Gtk.FileChooserAction.OPEN
-        self.choose_file("Selecione a fonte — " + fmt["title"], action,
-                         lambda path: self.choose_manifest(fmt, path, rebuild) if fmt["manifest"]
-                         else self.confirm_import(fmt, path, rebuild=rebuild))
+        multiple = bool(fmt.get("multiple")) and not rebuild and not fmt["directory"]
+        def selected(value):
+            if multiple:
+                self.confirm_import_batch(fmt, value)
+            elif fmt["manifest"]:
+                self.choose_manifest(fmt, value, rebuild)
+            else:
+                self.confirm_import(fmt, value, rebuild=rebuild)
+        self.choose_file(
+            "Selecione a fonte — " + fmt["title"],
+            action,
+            selected,
+            multiple=multiple,
+        )
 
-    def choose_file(self, title, action, callback):
-        chooser = Gtk.FileChooserNative(title=title, transient_for=self, action=action,
-                                        accept_label="Selecionar", cancel_label="Cancelar")
+    def choose_file(self, title, action, callback, *, multiple=False):
+        chooser = Gtk.FileChooserNative(
+            title=title,
+            transient_for=self,
+            action=action,
+            accept_label="Selecionar",
+            cancel_label="Cancelar",
+        )
+        chooser.set_select_multiple(bool(multiple))
         self.source_chooser = chooser
+
         def response(dialog, code):
-            file = dialog.get_file() if code == Gtk.ResponseType.ACCEPT else None
-            path = file.get_path() if file else None
+            value = None
+            if code == Gtk.ResponseType.ACCEPT:
+                if multiple:
+                    files = dialog.get_files()
+                    paths = []
+                    for index in range(files.get_n_items()):
+                        item = files.get_item(index)
+                        path = item.get_path() if item else None
+                        if path:
+                            paths.append(path)
+                    if paths:
+                        value = paths
+                else:
+                    file = dialog.get_file()
+                    path = file.get_path() if file else None
+                    if path:
+                        value = path
             dialog.destroy()
             self.source_chooser = None
-            if path:
-                callback(path)
+            if value:
+                callback(value)
+
         chooser.connect("response", response)
         chooser.show()
 
@@ -1223,6 +1257,41 @@ class Window(Adw.ApplicationWindow):
         path = str(validate_source(path))
         fmt = next(f for f in IMPORT_FORMATS if f["id"] == "bgl")
         return self.confirm_import(fmt, path)
+
+    def confirm_import_batch(self, fmt, paths):
+        paths = [str(Path(path)) for path in paths if path]
+        if not paths:
+            return None
+        if len(paths) == 1:
+            return self.confirm_import(fmt, paths[0])
+
+        preview = "\n".join("• " + Path(path).name for path in paths[:8])
+        if len(paths) > 8:
+            preview += f"\n• … e mais {len(paths) - 8}"
+
+        dialog = Adw.MessageDialog(
+            transient_for=self,
+            heading=f"Importar {len(paths)} arquivos?",
+            body=(
+                fmt["title"]
+                + "\n\n"
+                + preview
+                + "\n\nCada arquivo será convertido para seu próprio VLF. "
+                  "Uma falha não impedirá a tentativa dos demais."
+            ),
+        )
+        dialog.add_response("cancel", "Cancelar")
+        dialog.add_response("import", "Importar todos")
+        dialog.set_default_response("import")
+        dialog.set_close_response("cancel")
+
+        def response(_, choice):
+            if choice == "import":
+                self.start_import_batch(fmt, paths)
+
+        dialog.connect("response", response)
+        dialog.present()
+        return dialog
 
     def confirm_import(self, fmt, path, manifest=None, *, rebuild=None, metadata=None):
         heading = "Reconstruir dicionário?" if rebuild else "Confirmar importação"
@@ -1258,20 +1327,157 @@ class Window(Adw.ApplicationWindow):
         stage, count, total = self.import_stage
         if stage == "publish":
             self.cancel_import_button.set_sensitive(False)
+        elif not self.import_cancel.is_set():
+            self.cancel_import_button.set_sensitive(True)
+
+        batch = getattr(self, "import_batch_current", None)
+        prefix = ""
+        if batch:
+            index, amount, name = batch
+            prefix = f"Arquivo {index} de {amount} — {name}\n"
+
         if self.import_cancel.is_set() and stage != "publish":
-            self.import_status.set_text("Cancelando…")
+            self.import_status.set_text(prefix + "Cancelando…")
             return GLib.SOURCE_CONTINUE
         if stage == "index" and total:
             self.import_progress.set_fraction(min(1.0, count / total))
-            self.import_status.set_text(f"{count:n} de {total:n} verbetes indexados")
+            self.import_status.set_text(
+                prefix + f"{count:n} de {total:n} verbetes indexados"
+            )
         else:
             self.import_progress.pulse()
-            messages = {"prepare": "Lendo arquivos da fonte…",
-                        "index": f"{count:n} verbetes indexados",
-                        "verify": "Verificando a integridade da base…",
-                        "publish": "Registrando o dicionário…"}
-            self.import_status.set_text(messages.get(stage, "Importando…"))
+            messages = {
+                "prepare": "Lendo arquivos da fonte…",
+                "index": f"{count:n} verbetes indexados",
+                "verify": "Verificando a integridade da base…",
+                "publish": "Registrando o dicionário…",
+            }
+            self.import_status.set_text(
+                prefix + messages.get(stage, "Importando…")
+            )
         return GLib.SOURCE_CONTINUE
+
+    def start_import_batch(self, fmt, paths):
+        if self.importing:
+            return
+        paths = [str(Path(path)) for path in paths]
+        if not paths:
+            return
+
+        self.importing = True
+        self.import_cancel = threading.Event()
+        self.import_stage = ("prepare", 0, None)
+        self.import_batch_current = None
+        self.import_batch_current = (1, len(paths), Path(paths[0]).name)
+        self.import_action.set_enabled(False)
+        self.cancel_import_button.set_sensitive(True)
+        for control in (
+            getattr(self, "rebuild_buttons", [])
+            + getattr(self, "remove_buttons", [])
+        ):
+            control.set_sensitive(False)
+
+        self.import_title.set_text(
+            f"Importando {len(paths)} arquivos — {fmt['title']}"
+        )
+        self.import_progress.set_fraction(0)
+        self.import_panel.set_visible(True)
+        self.import_timer = GLib.timeout_add(120, self.render_import_progress)
+
+        def report(stage, count, total):
+            self.import_stage = (stage, count, total)
+
+        def run():
+            imported = []
+            skipped = []
+            failed = []
+
+            for index, path in enumerate(paths, 1):
+                if self.import_cancel.is_set():
+                    raise ImportCancelled("Importação cancelada")
+
+                self.import_batch_current = (
+                    index,
+                    len(paths),
+                    Path(path).name,
+                )
+                self.import_stage = ("prepare", 0, None)
+
+                try:
+                    result = import_dictionary(
+                        self.registry,
+                        None,
+                        path,
+                        fmt["id"],
+                        progress=report,
+                        cancel=self.import_cancel,
+                    )
+                except ImportCancelled:
+                    raise
+                except DictionaryAlreadyInstalled as exc:
+                    skipped.append((path, str(exc)))
+                except Exception as exc:
+                    failed.append((path, str(exc)))
+                else:
+                    imported.append((path, result))
+
+            return {
+                "imported": imported,
+                "skipped": skipped,
+                "failed": failed,
+                "total": len(paths),
+            }
+
+        def complete(result, error):
+            self.importing = False
+            self.import_batch_current = None
+            if self.import_timer:
+                GLib.source_remove(self.import_timer)
+                self.import_timer = 0
+            self.import_panel.set_visible(False)
+            self.import_action.set_enabled(True)
+            for control in (
+                getattr(self, "rebuild_buttons", [])
+                + getattr(self, "remove_buttons", [])
+            ):
+                control.set_sensitive(True)
+
+            self.refresh_dictionaries()
+            self.populate_preferences()
+
+            if isinstance(error, ImportCancelled):
+                self.toast_overlay.add_toast(
+                    Adw.Toast.new("Importação em lote cancelada")
+                )
+                return
+            if error:
+                self.show_error_dialog(
+                    "Não foi possível concluir a importação em lote",
+                    error,
+                )
+                return
+
+            imported = result["imported"]
+            skipped = result["skipped"]
+            failed = result["failed"]
+            summary = f"{len(imported)} importado(s)"
+            if skipped:
+                summary += f" · {len(skipped)} já instalado(s)"
+            if failed:
+                summary += f" · {len(failed)} falha(s)"
+            self.toast_overlay.add_toast(Adw.Toast.new(summary))
+
+            if failed:
+                details = "\n\n".join(
+                    Path(path).name + "\n" + message
+                    for path, message in failed
+                )
+                self.show_error_dialog(
+                    f"{len(failed)} arquivo(s) não foram importados",
+                    details,
+                )
+
+        self.work(run, complete)
 
     def start_import(self, fmt, path, manifest=None, *, rebuild=None, metadata=None):
         if self.importing:
