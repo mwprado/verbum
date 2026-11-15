@@ -108,7 +108,8 @@ def read_media(source, archive, name):
             raise ValueError("invalid picture name")
 
     signature = _archive_signature(source, archive)
-    location = _resolve_location(source, archive, name, signature)
+    lookup_name = name if archive == "picture" else name.rsplit("/", 1)[-1]
+    location = _resolve_location(source, archive, lookup_name, signature)
     if location is None:
         raise ValueError("missing or ambiguous media resource: " + archive + "/" + name)
     if any(value < 0 for value in location) or location[3] > 64 * 1024 * 1024:
