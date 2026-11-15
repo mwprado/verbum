@@ -93,5 +93,52 @@ class DictionaryBrowseTests(unittest.TestCase):
         )
 
 
+    def test_browse_entry_starts_at_first_word(self):
+        hit = self.registry.browse_entry(self.imported["slug"])
+        self.assertEqual(hit["entry"]["lemma"], "abacate")
+
+    def test_browse_entry_moves_one_word_at_a_time(self):
+        hit = self.registry.browse_entry(self.imported["slug"])
+        hit = self.registry.browse_entry(
+            self.imported["slug"], hit["entry_id"], direction=1
+        )
+        self.assertEqual(hit["entry"]["lemma"], "bola")
+        hit = self.registry.browse_entry(
+            self.imported["slug"], hit["entry_id"], direction=-1
+        )
+        self.assertEqual(hit["entry"]["lemma"], "abacate")
+
+    def test_letter_jump_opens_first_word_of_letter(self):
+        hit = self.registry.browse_entry(self.imported["slug"], letter="D")
+        self.assertEqual(hit["entry"]["lemma"], "dado")
+
+    def test_letter_without_entries_returns_none(self):
+        self.assertIsNone(
+            self.registry.browse_entry(self.imported["slug"], letter="Z")
+        )
+
+    def test_letter_a_includes_accented_initials(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = Registry(tmp)
+            imported = registry.import_entries(
+                {
+                    "title": "Acentos",
+                    "language": "pt-br",
+                    "origin": "acentos",
+                    "function": "general",
+                    "license": "test",
+                    "license_type": "unspecified",
+                    "access": "local",
+                },
+                [
+                    {"lemma": "Água", "definition": "A"},
+                    {"lemma": "Bola", "definition": "B"},
+                ],
+            )
+            hit = registry.browse_entry(imported["slug"], letter="A")
+            self.assertEqual(hit["entry"]["lemma"], "Água")
+
+
+
 if __name__ == "__main__":
     unittest.main()
