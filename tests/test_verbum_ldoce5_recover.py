@@ -93,6 +93,53 @@ class RecoveryTests(unittest.TestCase):
                 / "p008-000599672.mp3",
             )
 
+    def test_extra_basename_does_not_duplicate_logged_logical_path(self):
+        audio = mp3_fixture()
+        calls = []
+
+        def opener(request, timeout):
+            calls.append(request.full_url)
+            return _Response(audio)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            logs = root / "logs"
+            logs.mkdir()
+            log = logs / "longman-unrecoverable-test.jsonl"
+            log.write_text(
+                json.dumps({
+                    "record_type": "import",
+                    "format": "verbum-unrecoverable-media-log",
+                    "version": 1,
+                    "source_format": "longman",
+                    "source_path": "/tmp/ldoce5.data",
+                    "count": 1,
+                })
+                + "\n"
+                + json.dumps({
+                    "record_type": "resource",
+                    "archive": "exa_pron",
+                    "name": "p008_000/p008_00059/p008-000599672.mp3",
+                    "status": "pending",
+                })
+                + "\n",
+                encoding="utf-8",
+            )
+
+            results = recover_log(
+                log,
+                opener=opener,
+                extra_names=["p008-000599672.mp3"],
+            )
+            self.assertEqual(len(results), 1)
+            self.assertEqual(len(calls), 1)
+            rows = [
+                json.loads(line)
+                for line in log.read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual(len(rows), 2)
+            self.assertEqual(rows[0]["count"], 1)
+
     def test_extra_names_are_added_to_recovery_queue(self):
         audio = mp3_fixture()
 
