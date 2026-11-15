@@ -303,7 +303,7 @@ def _legacy_entry(record, lemma=None):
         candidate = (
             entry.get("lemma") or entry.get("headword") or entry.get("word")
             or entry.get("termo") or entry.get("verbete") or entry.get("palavra")
-            or lemma
+            or entry.get("lema_original") or lemma
         )
         if candidate is None:
             raise ValueError("Registro Pickle sem lema.")
@@ -326,16 +326,29 @@ def _legacy_entry(record, lemma=None):
     return {"lemma": str(lemma).strip(), "definition": _legacy_definition(_json_safe_legacy(record))}
 
 
+def _looks_like_legacy_entry(value):
+    """Distinguish one entry object from a top-level {lemma: record} map."""
+    if not isinstance(value, dict):
+        return False
+    lemma_keys = ("lemma", "headword", "word", "termo", "verbete", "palavra")
+    for key in lemma_keys:
+        candidate = value.get(key)
+        if isinstance(candidate, (str, bytes)) and candidate.strip():
+            return True
+    return False
+
+
 def pickle_entries(source):
     value = _load_legacy_pickle(source)
     if isinstance(value, dict) and "entries" in value and isinstance(value["entries"], (list, tuple, dict)):
         value = value["entries"]
     if isinstance(value, dict):
-        # A recovered class instance becomes its attribute dictionary.
-        # Distinguish that single-entry shape from a traditional
-        # {lemma: definition} dictionary.
-        lemma_keys = ("lemma", "headword", "word", "termo", "verbete", "palavra")
-        if any(key in value for key in lemma_keys):
+        # A recovered class instance becomes its attribute dictionary.  A
+        # dictionary keyed by lemmas may itself contain lemmas named
+        # "palavra", "verbete" or "termo"; those values are records, not a
+        # scalar headword field, and must not collapse the whole dictionary
+        # into one entry.
+        if _looks_like_legacy_entry(value):
             yield _legacy_entry(value)
             return
         for lemma, record in value.items():
