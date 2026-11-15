@@ -97,3 +97,8 @@ verbum-ldoce5-recover \
 ~~~
 
 Successful records are marked `recovered` in the JSONL log and include `recovered_url`, `recovered_path`, `recovered_size`, `recovered_sha256` and `recovered_at`. Failed records are marked `failed` with the last recovery error and remain retryable by a later invocation.
+
+
+### Legacy Aurélio sense markers
+
+Recovered Aurélio/Pickle records may encode an acepção number in the lexical key as a trailing `$N$` marker, for example `Água$1$` or `Água benta$3$`. Verbum removes this implementation marker from the displayed/searchable lemma, preserves the marked form as `source_lemma`, and records the numeric value as `sense_index`. When an unmarked `lema_original` is available, it remains the preferred lemma, but a matching marked legacy field is still inspected so the sense index is not lost.
