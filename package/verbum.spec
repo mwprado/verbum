@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        48%{?dist}
+Release:        49%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,13 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-49
+- Browse all headwords when an installed dictionary is selected with an empty search
+- Add SQLite LIMIT/OFFSET pagination without loading the full dictionary into memory
+- Show 100 headwords per page with total count and Previous/Next navigation
+- Keep typed searches unchanged when switching dictionaries
+- Add regression coverage for ordered paginated VLF browsing
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-48
 - Treat the outer key as authoritative for keyed legacy dictionaries such as VOLP
 - Skip blank keyed records that have no embedded lexical lemma instead of aborting import
