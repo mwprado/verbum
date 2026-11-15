@@ -225,6 +225,71 @@ class Registry:
                 except OSError:
                     pass
 
+    def browse_entry(self, dictionary, entry_id=None, *, letter=None, direction=0):
+        """Return one VLF entry for sequential/alphabetic navigation."""
+        if direction not in (-1, 0, 1):
+            raise ValueError("direction must be -1, 0 or 1")
+
+        manifest, path = self.dictionary(dictionary)
+        with closing(connect_read(path)) as db:
+            row = None
+            if letter is not None:
+                key = normalize(str(letter))
+                if len(key) != 1 or not ("a" <= key <= "z"):
+                    raise ValueError("letter must be A..Z")
+                upper = chr(ord(key) + 1)
+                row = db.execute(
+                    "SELECT id,payload FROM entries "
+                    "WHERE normalized>=? AND normalized<? "
+                    "ORDER BY normalized,lemma,id LIMIT 1",
+                    (key, upper),
+                ).fetchone()
+            elif entry_id is None:
+                row = db.execute(
+                    "SELECT id,payload FROM entries "
+                    "ORDER BY normalized,lemma,id LIMIT 1"
+                ).fetchone()
+            else:
+                current = db.execute(
+                    "SELECT normalized,lemma,id FROM entries WHERE id=?",
+                    (entry_id,),
+                ).fetchone()
+                if current is None:
+                    raise ValueError("Verbete não encontrado no dicionário")
+                normalized, lemma, current_id = current
+                if direction < 0:
+                    row = db.execute(
+                        "SELECT id,payload FROM entries WHERE "
+                        "normalized < ? OR "
+                        "(normalized = ? AND lemma < ?) OR "
+                        "(normalized = ? AND lemma = ? AND id < ?) "
+                        "ORDER BY normalized DESC,lemma DESC,id DESC LIMIT 1",
+                        (normalized, normalized, lemma, normalized, lemma, current_id),
+                    ).fetchone()
+                elif direction > 0:
+                    row = db.execute(
+                        "SELECT id,payload FROM entries WHERE "
+                        "normalized > ? OR "
+                        "(normalized = ? AND lemma > ?) OR "
+                        "(normalized = ? AND lemma = ? AND id > ?) "
+                        "ORDER BY normalized,lemma,id LIMIT 1",
+                        (normalized, normalized, lemma, normalized, lemma, current_id),
+                    ).fetchone()
+                else:
+                    row = db.execute(
+                        "SELECT id,payload FROM entries WHERE id=?",
+                        (entry_id,),
+                    ).fetchone()
+
+        if row is None:
+            return None
+        return {
+            "dictionary": manifest["slug"],
+            "entry_id": row[0],
+            "entry": json.loads(row[1]),
+            "match": "browse",
+        }
+
     def browse(self, dictionary, page=0, page_size=100, seek=None):
         """Browse one installed dictionary without loading its full index.
 
