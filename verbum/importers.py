@@ -619,6 +619,9 @@ def _legacy_record_has_own_lemma(record):
 
 def _legacy_entry_optional(record, lemma=None):
     """Return a lexical entry or None for an unusable auxiliary/orphan record."""
+    if _legacy_record_is_empty(record, lemma):
+        return None
+
     if lemma is not None:
         raw_lemma = (
             lemma.decode("utf-8", errors="replace")
