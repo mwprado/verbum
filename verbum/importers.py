@@ -7,6 +7,7 @@ import pickle
 import shutil
 import subprocess
 import unicodedata
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -69,6 +70,50 @@ def longman_entries(source, cancel=None):
                 process.kill()
                 process.wait()
 
+def _write_unrecoverable_log(registry, source, result, corrupt):
+    """Write a private JSONL recovery queue for irrecoverable source media."""
+    if not corrupt:
+        return None
+
+    log_dir = Path(registry.root) / "logs"
+    log_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+
+    created = datetime.now(timezone.utc)
+    stamp = created.strftime("%Y%m%dT%H%M%S.%fZ")
+    target = log_dir / ("longman-unrecoverable-" + stamp + ".jsonl")
+    temp = target.with_suffix(target.suffix + ".tmp")
+
+    header = {
+        "record_type": "import",
+        "format": "verbum-unrecoverable-media-log",
+        "version": 1,
+        "created_at": created.isoformat(),
+        "source_format": "longman",
+        "source_path": str(_longman_source(source)),
+        "dictionary_slug": result.get("slug"),
+        "vlf_path": result.get("path"),
+        "count": len(corrupt),
+    }
+
+    lines = [json.dumps(header, ensure_ascii=False, sort_keys=True)]
+    for (archive, name), reason in sorted(corrupt.items()):
+        lines.append(json.dumps({
+            "record_type": "resource",
+            "archive": archive,
+            "name": name,
+            "reason": reason,
+            "status": "pending",
+        }, ensure_ascii=False, sort_keys=True))
+
+    try:
+        temp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        temp.chmod(0o600)
+        temp.replace(target)
+    finally:
+        temp.unlink(missing_ok=True)
+    return str(target)
+
+
 class _LongmanMediaLoader:
     def __init__(self, source):
         command = shutil.which("verbum-ldoce5-media")
@@ -78,7 +123,7 @@ class _LongmanMediaLoader:
                 "(comando verbum-ldoce5-media)."
             )
         self.missing = set()
-        self.corrupt = set()
+        self.corrupt = {}
         self.process = subprocess.Popen(
             [command, str(_longman_source(source))],
             stdin=subprocess.PIPE,
@@ -108,7 +153,7 @@ class _LongmanMediaLoader:
                 "empty or truncated media record",
                 "invalid MPEG audio record",
             )):
-                self.corrupt.add((archive, name))
+                self.corrupt[(archive, name)] = detail
                 return {"unavailable": True, "reason": detail}
             raise ValueError(detail + f" [recurso: {archive}/{name}]")
         return base64.b64decode(response["data"], validate=True), response["mime"]
@@ -444,6 +489,13 @@ def import_dictionary(registry, metadata, source, source_format="json", *, progr
             )
             result["missing_resources"] = len(loader.missing)
             result["corrupt_resources"] = len(loader.corrupt)
+            if loader.corrupt:
+                try:
+                    result["corrupt_log"] = _write_unrecoverable_log(
+                        registry, source, result, loader.corrupt
+                    )
+                except OSError as exc:
+                    result["corrupt_log_error"] = str(exc)
             return result
         finally:
             loader.close()
