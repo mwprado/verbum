@@ -578,6 +578,47 @@ def _looks_like_legacy_entry(value):
     return False
 
 
+def _legacy_record_is_empty(record, lemma=None):
+    """True only for legacy container records that carry no lexical payload."""
+    if isinstance(lemma, bytes):
+        lemma = lemma.decode("utf-8", errors="replace")
+    if lemma is not None and str(lemma).strip():
+        return False
+
+    if record is None:
+        return True
+    if isinstance(record, bytes):
+        return not record.decode("utf-8", errors="replace").strip()
+    if isinstance(record, str):
+        return not record.strip()
+    if isinstance(record, (list, tuple, set, frozenset)):
+        return all(_legacy_record_is_empty(item) for item in record)
+    if isinstance(record, dict):
+        for key, item in record.items():
+            key_text = (
+                key.decode("utf-8", errors="replace")
+                if isinstance(key, bytes) else str(key)
+            ).strip()
+            if key_text and not _legacy_record_is_empty(item):
+                return False
+        return True
+    return False
+
+
+def _legacy_entry_optional(record, lemma=None):
+    """Return a lexical entry or None for a genuinely empty auxiliary record."""
+    try:
+        return _legacy_entry(record, lemma)
+    except ValueError as exc:
+        if str(exc) in (
+            "Registro Pickle sem lema.",
+            "Registro Pickle com lema vazio.",
+            "Estrutura Pickle não contém lema identificável.",
+        ) and _legacy_record_is_empty(record, lemma):
+            return None
+        raise
+
+
 def pickle_entries(source):
     value = _load_legacy_pickle(source)
     if isinstance(value, dict) and "entries" in value and isinstance(value["entries"], (list, tuple, dict)):
@@ -589,14 +630,20 @@ def pickle_entries(source):
         # scalar headword field, and must not collapse the whole dictionary
         # into one entry.
         if _looks_like_legacy_entry(value):
-            yield _legacy_entry(value)
+            entry = _legacy_entry_optional(value)
+            if entry is not None:
+                yield entry
             return
         for lemma, record in value.items():
-            yield _legacy_entry(record, lemma)
+            entry = _legacy_entry_optional(record, lemma)
+            if entry is not None:
+                yield entry
         return
     if isinstance(value, (list, tuple)):
         for record in value:
-            yield _legacy_entry(record)
+            entry = _legacy_entry_optional(record)
+            if entry is not None:
+                yield entry
         return
     raise ValueError("Estrutura Pickle/PKLZ não suportada.")
 
