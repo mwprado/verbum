@@ -80,9 +80,23 @@ def _resolve_location(source, archive, name, signature):
     if len(matches) == 1:
         return next(iter(matches))
 
-    # Compatibility with older importer generations that retained only
-    # the basename. Accept it only when it identifies one record.
-    basename = name.rsplit("/", 1)[-1]
+    # If the physical SKN hierarchy contains extra levels, progressively
+    # shorten the logical XML path while preserving its trailing directories.
+    parts = [part for part in name.split("/") if part]
+    for width in range(min(len(parts), 4), 1, -1):
+        tail = "/".join(parts[-width:])
+        suffix = "/" + tail
+        matches = {
+            location
+            for path, location in full_paths.items()
+            if path == tail or path.endswith(suffix)
+        }
+        if len(matches) == 1:
+            return next(iter(matches))
+
+    # Compatibility with the original file-map and older VLF generations:
+    # basename is accepted only when it maps to one physical record.
+    basename = parts[-1] if parts else name.rsplit("/", 1)[-1]
     basename_matches = {
         location
         for path, location in full_paths.items()
@@ -108,8 +122,7 @@ def read_media(source, archive, name):
             raise ValueError("invalid picture name")
 
     signature = _archive_signature(source, archive)
-    lookup_name = name if archive == "picture" else name.rsplit("/", 1)[-1]
-    location = _resolve_location(source, archive, lookup_name, signature)
+    location = _resolve_location(source, archive, name, signature)
     if location is None:
         raise ValueError("missing or ambiguous media resource: " + archive + "/" + name)
     if any(value < 0 for value in location) or location[3] > 64 * 1024 * 1024:
