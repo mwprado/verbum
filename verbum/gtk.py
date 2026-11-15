@@ -606,21 +606,61 @@ class Window(Adw.ApplicationWindow):
             legacy_entries = []
         if legacy_entries:
             self.detail.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
-            self.detail.append(label("Outras entradas e locuções", "heading"))
+
+            section = Gtk.Box(
+                orientation=Gtk.Orientation.HORIZONTAL,
+                spacing=8,
+                valign=Gtk.Align.CENTER,
+            )
+            section.append(label("Outras entradas e locuções", "heading"))
+            count = label(str(len(legacy_entries)), "caption")
+            count.add_css_class("dim-label")
+            section.append(count)
+            self.detail.append(section)
+
+            hint = label("Selecione um verbete para consultar.", "caption")
+            hint.add_css_class("dim-label")
+            hint.set_selectable(False)
+            self.detail.append(hint)
+
             flow = Gtk.FlowBox(
                 selection_mode=Gtk.SelectionMode.NONE,
                 min_children_per_line=1,
-                max_children_per_line=4,
+                max_children_per_line=3,
                 homogeneous=False,
-                row_spacing=4,
-                column_spacing=14,
-                halign=Gtk.Align.START,
+                row_spacing=6,
+                column_spacing=8,
+                halign=Gtk.Align.FILL,
             )
+            flow.set_hexpand(True)
+
+            def open_related(_button, text):
+                self.search.set_text(text)
+                self.run_search_now()
+
             for text in legacy_entries:
-                item = label(text)
-                item.set_selectable(True)
-                item.set_margin_end(8)
+                item = Gtk.Button()
+                item.add_css_class("flat")
+                item.set_halign(Gtk.Align.FILL)
+                item.set_hexpand(True)
+                item.set_tooltip_text("Consultar " + text)
+
+                content = Gtk.Box(
+                    orientation=Gtk.Orientation.HORIZONTAL,
+                    spacing=6,
+                )
+                title = Gtk.Label(
+                    label=text,
+                    xalign=0,
+                    ellipsize=Pango.EllipsizeMode.END,
+                    hexpand=True,
+                )
+                content.append(title)
+                content.append(Gtk.Image.new_from_icon_name("go-next-symbolic"))
+                item.set_child(content)
+                item.connect("clicked", open_related, text)
                 flow.insert(item, -1)
+
             self.detail.append(flow)
 
         etymology = e.get("etymology")
