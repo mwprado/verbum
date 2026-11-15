@@ -77,11 +77,20 @@ def parse_entry(data, source_name):
     for node in root.iter("Audio"):
         resource, topic = node.get("resource"), node.get("topic")
         if resource and topic:
+            archive = resource.lower()
+            # Preserve the relative path from the XML.  Some LDOCE5 media
+            # archives contain duplicate basenames in different directories.
+            parts = [part for part in topic.replace("\\", "/").split("/") if part]
+            if parts and parts[0].lower() in (archive, archive + ".skn"):
+                parts = parts[1:]
+            name = "/".join(parts)
+            if not name:
+                continue
             audio_indices[node] = len(media)
             media.append({
                 "type": "audio",
-                "archive": resource.lower(),
-                "name": topic.split("/")[-1],
+                "archive": archive,
+                "name": name,
             })
 
     def example_detail(node):
