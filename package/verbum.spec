@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        37%{?dist}
+Release:        38%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,13 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-38
+- Interpret legacy Aurélio $N$ suffixes as acepção indices instead of homographs
+- Preserve the numeric marker as sense_index and the marked key as source_lemma
+- Recover sense_index from matching marked fields even when lema_original is unmarked
+- Remove incorrect homograph metadata from normalized legacy records
+- Extend regression coverage for legacy sense-index preservation
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-37
 - Fix legacy homograph regex escaping introduced in the Aurélio normalization
 - Restore stripping of trailing markers such as $1$ and $3$
