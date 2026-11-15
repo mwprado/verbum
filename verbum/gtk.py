@@ -97,6 +97,9 @@ class Window(Adw.ApplicationWindow):
         self.history_position = -1
         self.restoring_history = False
         self.refreshing_filters = False
+        self.browse_page = 0
+        self.browse_page_size = 100
+        self.browse_pages = 1
         self.pane = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL, position=250,
                               vexpand=True, hexpand=True)
         outer.append(self.pane)
@@ -213,6 +216,28 @@ class Window(Adw.ApplicationWindow):
         self.result_scroll = result_scroll
         result_scroll.set_visible(False)
         right.append(result_scroll)
+
+        self.pager = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=8,
+            halign=Gtk.Align.CENTER,
+            margin_top=2,
+            margin_bottom=8,
+        )
+        self.page_previous = Gtk.Button(label="Anterior")
+        self.page_previous.add_css_class("flat")
+        self.page_previous.connect("clicked", lambda *_: self.change_browse_page(-1))
+        self.page_label = Gtk.Label(label="")
+        self.page_label.add_css_class("dim-label")
+        self.page_next = Gtk.Button(label="Próxima")
+        self.page_next.add_css_class("flat")
+        self.page_next.connect("clicked", lambda *_: self.change_browse_page(1))
+        self.pager.append(self.page_previous)
+        self.pager.append(self.page_label)
+        self.pager.append(self.page_next)
+        self.pager.set_visible(False)
+        right.append(self.pager)
+
         self.detail = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12,
                               margin_start=24, margin_end=24, margin_top=24, margin_bottom=32)
         clamp = Adw.Clamp(maximum_size=760, tightening_threshold=580)
@@ -300,6 +325,7 @@ class Window(Adw.ApplicationWindow):
 
     def on_dictionary_selected(self, *_):
         if not self.refreshing_filters:
+            self.browse_page = 0
             self.schedule_search()
 
     def on_result_selected(self, box):
@@ -439,6 +465,110 @@ class Window(Adw.ApplicationWindow):
             GLib.source_remove(self.timeout)
         self.timeout = GLib.timeout_add(180, self.run_search)
 
+    def render_hits(self, hits, *, auto_select=True):
+        clear(self.results)
+        for hit, (lemma, pos) in zip(hits, result_labels(hits)):
+            row = Gtk.FlowBoxChild()
+            row.hit = hit
+            box = Gtk.Box(
+                orientation=Gtk.Orientation.HORIZONTAL,
+                spacing=6,
+                margin_start=10,
+                margin_end=10,
+                margin_top=8,
+                margin_bottom=8,
+            )
+            word = Gtk.Label(label=lemma, xalign=0)
+            word.set_ellipsize(Pango.EllipsizeMode.END)
+            box.append(word)
+            if pos:
+                grammar = Gtk.Label(xalign=0)
+                grammar.set_markup(
+                    "<i>(" + GLib.markup_escape_text(pos) + ")</i>"
+                )
+                grammar.add_css_class("dim-label")
+                grammar.set_ellipsize(Pango.EllipsizeMode.END)
+                box.append(grammar)
+            source = next(
+                (
+                    m["title"] for m in self.manifests
+                    if m["slug"] == hit["dictionary"]
+                ),
+                hit["dictionary"],
+            )
+            row.set_tooltip_text(
+                lemma + (" (" + pos + ")" if pos else "") + "\n" + source
+            )
+            row.set_child(box)
+            self.results.insert(row, -1)
+
+        self.result_scroll.set_visible(bool(hits))
+        if hits and auto_select:
+            self.results.select_child(self.results.get_child_at_index(0))
+
+    def change_browse_page(self, delta):
+        target = self.browse_page + delta
+        if not 0 <= target < self.browse_pages:
+            return
+        self.browse_page = target
+        self.run_search_now()
+
+    def run_browse(self, selected, generation):
+        self.status.set_text("Carregando verbetes…")
+
+        def find():
+            return self.registry.browse(
+                selected,
+                page=self.browse_page,
+                page_size=self.browse_page_size,
+            )
+
+        def complete(result, error):
+            if generation != self.generation:
+                return
+            if error:
+                clear(self.results)
+                self.result_scroll.set_visible(False)
+                self.pager.set_visible(False)
+                self.status.set_text(str(error))
+                return
+
+            self.browse_page = result["page"]
+            self.browse_pages = result["pages"]
+            hits = result["hits"]
+            self.render_hits(hits, auto_select=False)
+
+            page_number = self.browse_page + 1
+            self.page_label.set_text(
+                f"Página {page_number} de {self.browse_pages} · "
+                f"{result['total']:,} verbetes".replace(",", ".")
+            )
+            self.page_previous.set_sensitive(self.browse_page > 0)
+            self.page_next.set_sensitive(
+                self.browse_page + 1 < self.browse_pages
+            )
+            self.pager.set_visible(bool(result["total"]))
+            self.status.set_text(
+                f"{result['total']:,} verbetes no dicionário."
+                .replace(",", ".")
+            )
+
+            if hits:
+                manifest = next(
+                    (m for m in self.manifests if m["slug"] == selected),
+                    None,
+                )
+                source_name, _edition = dictionary_identity(manifest)
+                self.show_empty(
+                    source_name or "Dicionário",
+                    "Selecione um verbete da lista para consultar.",
+                )
+            else:
+                self.show_empty("Dicionário vazio", "Nenhum verbete disponível.")
+
+        self.work(find, complete)
+        return GLib.SOURCE_REMOVE
+
     def run_search(self):
         self.timeout = 0
         query = self.search.get_text().strip()
@@ -446,50 +576,48 @@ class Window(Adw.ApplicationWindow):
         selected = self.selected_dictionary()
         language = self.filter_value(self.language, self.language_keys)
         kind = self.filter_value(self.kind, self.kind_keys)
+
         if not query:
+            if selected:
+                return self.run_browse(selected, generation)
             clear(self.results)
             self.result_scroll.set_visible(False)
+            self.pager.set_visible(False)
             self.show_empty()
-            self.status.set_text("Digite uma palavra.")
+            self.status.set_text("Digite uma palavra ou selecione um dicionário.")
             return GLib.SOURCE_REMOVE
+
+        self.pager.set_visible(False)
         self.status.set_text("Pesquisando…")
+
         def find():
-            return self.registry.search(query, mode="smart", limit=100, dictionary=selected, language=language, function=kind)
+            return self.registry.search(
+                query,
+                mode="smart",
+                limit=100,
+                dictionary=selected,
+                language=language,
+                function=kind,
+            )
+
         def complete(hits, error):
             if generation != self.generation:
                 return
-            clear(self.results)
             if error:
+                clear(self.results)
+                self.result_scroll.set_visible(False)
                 self.status.set_text(str(error))
                 return
-            for hit, (lemma, pos) in zip(hits, result_labels(hits)):
-                row = Gtk.FlowBoxChild()
-                row.hit = hit
-                box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6,
-                              margin_start=10, margin_end=10, margin_top=8, margin_bottom=8)
-                word = Gtk.Label(label=lemma, xalign=0)
-                word.set_ellipsize(Pango.EllipsizeMode.END)
-                box.append(word)
-                if pos:
-                    grammar = Gtk.Label(xalign=0)
-                    grammar.set_markup("<i>(" + GLib.markup_escape_text(pos) + ")</i>")
-                    grammar.add_css_class("dim-label")
-                    grammar.set_ellipsize(Pango.EllipsizeMode.END)
-                    box.append(grammar)
-                source = next((m["title"] for m in self.manifests if m["slug"] == hit["dictionary"]), hit["dictionary"])
-                row.set_tooltip_text(lemma + (" (" + pos + ")" if pos else "") + "\n" + source)
-                row.set_child(box)
-                self.results.insert(row, -1)
+
+            self.render_hits(hits)
             if hits and all(h.get("match") == "similar" for h in hits):
                 self.status.set_text("Palavras semelhantes encontradas.")
             else:
                 self.status.set_text(f"{len(hits)} resultado(s), máximo 100.")
-            if hits:
-                self.result_scroll.set_visible(True)
-                self.results.select_child(self.results.get_child_at_index(0))
-            else:
-                self.result_scroll.set_visible(False)
+
+            if not hits:
                 self.show_empty("Nenhum resultado", "Tente outra grafia ou palavra.")
+
         self.work(find, complete)
         return GLib.SOURCE_REMOVE
 
