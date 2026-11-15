@@ -145,5 +145,31 @@ class VerbumTests(unittest.TestCase):
         self.assertEqual(original.read_text(encoding="utf-8"), "original")
         self.registry.import_entries(self.meta, [{"lemma":"new"}])
 
+    def test_restricted_pickle_import(self):
+        import gzip
+        import pickle
+        from verbum.importers import import_dictionary
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "historico.pklz"
+            source.write_bytes(gzip.compress(pickle.dumps({
+                "água": "líquido",
+                "casa": {"definition": "moradia", "classe": "substantivo"},
+            }, protocol=4)))
+            result = import_dictionary(self.registry, None, source, "pickle")
+            self.assertEqual(result["entries"], 2)
+            self.assertEqual(len(self.registry.search("água", mode="exact")), 1)
+
+    def test_restricted_pickle_rejects_globals(self):
+        import pickle
+        from verbum.importers import pickle_entries
+        class Unsafe:
+            pass
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "unsafe.pkl"
+            source.write_bytes(pickle.dumps(Unsafe(), protocol=4))
+            with self.assertRaises(ValueError):
+                list(pickle_entries(source))
+
 if __name__ == "__main__":
     unittest.main()
