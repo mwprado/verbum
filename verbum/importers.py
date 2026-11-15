@@ -355,20 +355,20 @@ def _legacy_definition(value):
     return str(value)
 
 
-_LEGACY_SENSE_SUFFIX = re.compile(r"(?:\$(\d+)\$)+$")
+_LEGACY_HOMOGRAPH_SUFFIX = re.compile(r"(?:\$(\d+)\$)+$")
 
 
 def _clean_legacy_lemma(value):
-    """Remove legacy sense markers such as $1$ from the display/search lemma.
+    """Remove legacy homograph markers such as $1$ from display/search lemma.
 
-    Older Aurélio data encoded the sense number at the end of a lexical key.
-    The cleaned lemma is used for display/search while the numeric marker is
-    preserved separately as sense_index.
+    Older Aurélio data encoded the numbered homograph/entry at the end of the
+    lexical key.  The cleaned lemma is used for display/search while the
+    numeric marker is preserved separately as homograph.
     """
     if isinstance(value, bytes):
         value = value.decode("utf-8", errors="replace")
     text = str(value).strip()
-    match = _LEGACY_SENSE_SUFFIX.search(text)
+    match = _LEGACY_HOMOGRAPH_SUFFIX.search(text)
     if not match:
         return text, None
     clean = text[:match.start()].rstrip()
@@ -389,12 +389,12 @@ def _legacy_entry(record, lemma=None):
         if candidate is None:
             raise ValueError("Registro Pickle sem lema.")
         raw_candidate = candidate.decode("utf-8", errors="replace") if isinstance(candidate, bytes) else str(candidate)
-        candidate, sense_index = _clean_legacy_lemma(raw_candidate)
+        candidate, homograph = _clean_legacy_lemma(raw_candidate)
         if not candidate:
             raise ValueError("Registro Pickle com lema vazio.")
 
         source_lemma = raw_candidate.strip()
-        if sense_index is None:
+        if homograph is None:
             for key in ("lemma", "headword", "word", "termo", "verbete", "palavra"):
                 alternate = entry.get(key)
                 if not isinstance(alternate, (str, bytes)):
@@ -405,14 +405,14 @@ def _legacy_entry(record, lemma=None):
                 ).strip()
                 clean_alternate, alternate_index = _clean_legacy_lemma(raw_alternate)
                 if alternate_index is not None and clean_alternate == candidate:
-                    sense_index = alternate_index
+                    homograph = alternate_index
                     source_lemma = raw_alternate
                     break
 
         if source_lemma != candidate:
             entry.setdefault("source_lemma", source_lemma)
-        if sense_index is not None:
-            entry.setdefault("sense_index", sense_index)
+        if homograph is not None:
+            entry.setdefault("homograph", homograph)
         entry.pop("homograph", None)
         entry["lemma"] = candidate
         if not any(key in entry for key in ("definition", "definitions", "senses")):
@@ -424,15 +424,15 @@ def _legacy_entry(record, lemma=None):
     if lemma is None:
         raise ValueError("Estrutura Pickle não contém lema identificável.")
     raw_lemma = lemma.decode("utf-8", errors="replace") if isinstance(lemma, bytes) else str(lemma)
-    clean_lemma, sense_index = _clean_legacy_lemma(raw_lemma)
+    clean_lemma, homograph = _clean_legacy_lemma(raw_lemma)
     result = {
         "lemma": clean_lemma,
         "definition": _legacy_definition(_json_safe_legacy(record)),
     }
     if clean_lemma != raw_lemma.strip():
         result["source_lemma"] = raw_lemma.strip()
-    if sense_index is not None:
-        result["sense_index"] = sense_index
+    if homograph is not None:
+        result["homograph"] = homograph
     return result
 
 
