@@ -6,10 +6,10 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        9%{?dist}
+Release:        10%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
-License:        MIT
+License:        MIT AND GPL-3.0-or-later
 URL:            https://github.com/mwprado/%{upstream_repo}
 Source0:        %{url}/archive/refs/tags/verbum-%{version}.tar.gz#/%{name}-%{version}.tar.gz
 
@@ -32,6 +32,7 @@ Requires:       python3 >= 3.9
 Requires:       python3-gobject
 Requires:       gobject-introspection
 Requires:       python3-cairo
+Requires:       python3-lxml
 Requires:       gtk4
 Requires:       libadwaita
 Requires:       gstreamer1
@@ -65,6 +66,10 @@ Dictionary contents are not distributed with this package.
 %install
 install -d %{buildroot}%{python3_sitelib}/verbum
 install -pm0644 verbum/*.py verbum/catalog.toml %{buildroot}%{python3_sitelib}/verbum/
+%{python3_sitelib}/verbum_ldoce5/
+
+install -d %{buildroot}%{python3_sitelib}/verbum_ldoce5
+install -pm0644 verbum_ldoce5/*.py %{buildroot}%{python3_sitelib}/verbum_ldoce5/
 
 install -d %{buildroot}%{_bindir}
 cat > %{buildroot}%{_bindir}/verbum <<'EOF'
@@ -73,6 +78,14 @@ from verbum.__main__ import main
 raise SystemExit(main())
 EOF
 chmod 0755 %{buildroot}%{_bindir}/verbum
+%{_bindir}/verbum-ldoce5-export
+
+cat > %{buildroot}%{_bindir}/verbum-ldoce5-export <<'EOF'
+#!%{__python3}
+from verbum_ldoce5.export import main
+raise SystemExit(main())
+EOF
+chmod 0755 %{buildroot}%{_bindir}/verbum-ldoce5-export
 
 desktop-file-install --dir=%{buildroot}%{_datadir}/applications data/%{appid}.desktop
 install -Dm0644 data/%{appid}.svg %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/%{appid}.svg
@@ -82,6 +95,7 @@ install -Dm0644 data/%{appid}.metainfo.xml %{buildroot}%{_datadir}/metainfo/%{ap
 %check
 %{__python3} -m unittest discover -s tests -p 'test_verbum*.py' -v
 %{__python3} -c 'from verbum.gtk import Application; from verbum import resources'
+%{__python3} -c 'from verbum_ldoce5.export import validate_source; from verbum_ldoce5 import idmreader'
 desktop-file-validate %{buildroot}%{_datadir}/applications/%{appid}.desktop
 appstream-util validate-relax --nonet %{buildroot}%{_datadir}/metainfo/%{appid}.metainfo.xml
 # Test MIME compilation outside the buildroot.
@@ -90,7 +104,7 @@ cp data/%{appid}.xml mime-check/packages/
 update-mime-database mime-check
 
 %files
-%license LICENSE
+%license LICENSE LICENSES/GPL-3.0-or-later.txt
 %doc docs/VERBUM.md
 %{_bindir}/verbum
 %{python3_sitelib}/verbum/
@@ -100,6 +114,12 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-10
+- Bundle the GPL LDOCE5 IDM/SKN converter inside the Verbum source and RPM
+- Keep the converter as a separate subprocess component from the MIT application
+- Add python3-lxml runtime dependency for Longman XML parsing
+- Enable GUI-only Longman import with no external package required
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-9
 - Add Longman LDOCE5 import through the external GPL converter
 - Expose Longman in the GTK import dialog and CLI
