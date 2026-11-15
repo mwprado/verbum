@@ -4,7 +4,7 @@ from verbum.importers import _clean_legacy_lemma, _legacy_entry
 
 
 class LegacyLemmaNormalizationTests(unittest.TestCase):
-    def test_dollar_homograph_suffix_is_removed(self):
+    def test_dollar_sense_suffix_is_removed(self):
         self.assertEqual(_clean_legacy_lemma("Água$1$"), ("Água", 1))
         self.assertEqual(_clean_legacy_lemma("Água benta$2$"), ("Água benta", 2))
 
@@ -20,6 +20,9 @@ class LegacyLemmaNormalizationTests(unittest.TestCase):
             "definicao": "Substância líquida.",
         })
         self.assertEqual(entry["lemma"], "Água")
+        self.assertEqual(entry["source_lemma"], "Água$1$")
+        self.assertEqual(entry["sense_index"], 1)
+        self.assertNotIn("homograph", entry)
 
     def test_source_marker_is_preserved_when_used_as_lemma(self):
         entry = _legacy_entry({
@@ -28,7 +31,8 @@ class LegacyLemmaNormalizationTests(unittest.TestCase):
         })
         self.assertEqual(entry["lemma"], "Água benta")
         self.assertEqual(entry["source_lemma"], "Água benta$3$")
-        self.assertEqual(entry["homograph"], 3)
+        self.assertEqual(entry["sense_index"], 3)
+        self.assertNotIn("homograph", entry)
 
 
 if __name__ == "__main__":
