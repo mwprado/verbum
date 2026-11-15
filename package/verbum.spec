@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        24%{?dist}
+Release:        25%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-25
+- Fix Python 3 syntax in PKLZ regression tests
+- Encode non-ASCII byte fixtures explicitly as UTF-8
+- Keep protocol-0 pickle fixtures ASCII-safe with Unicode escapes
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-24
 - Recognize recovered class-state dictionaries as single legacy entries
 - Accept definicao/definição legacy Portuguese definition fields
