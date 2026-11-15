@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        28%{?dist}
+Release:        29%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,12 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-29
+- Keep error dialogs visually clean with a short user-facing message
+- Move technical diagnostics into an expandable Mais informações section
+- Show full errors in a selectable scrollable text box
+- Keep one-click Copy error inside the expanded details
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-28
 - Make GUI error details selectable
 - Add one-click Copy error action to clipboard
