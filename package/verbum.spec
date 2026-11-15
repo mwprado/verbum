@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        33%{?dist}
+Release:        34%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,13 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-34
+- Prefer lema_original when importing recovered legacy dictionary records
+- Remove trailing legacy homograph markers such as $1$ and $2$ from searchable lemmas
+- Preserve the original marked lemma as source_lemma and numeric homograph metadata
+- Keep legitimate punctuation in dictionary headwords unchanged
+- Add regression coverage for Aurélio-style marked lemmas
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-33
 - Write unrecoverable Longman media to a private JSONL recovery queue
 - Record archive, logical name, media type, extension, failure reason and pending status
