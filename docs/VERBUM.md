@@ -418,3 +418,10 @@ The “Outras entradas e locuções” section is intentionally compact: only em
 
 
 The GTK presentation of `legacy_entries` uses a compact three-column navigation grid. Only headword/locution titles are shown; each item is directly actionable and starts a new lexical search when selected. A count and short interaction hint are shown above the grid. Full embedded definitions remain preserved but hidden from this compact navigation section.
+
+
+### Dictionary identity in the UI
+
+The detail view distinguishes the compact dictionary/source identity from the full edition title. The compact line uses names such as `Aurélio`, `Michaelis` and `LDOCE`; an optional smaller secondary line carries the full edition title. This avoids redundant labels such as “dicionário Aurélio” while retaining edition provenance.
+
+The Michaelis legacy catalog record includes metadata transcribed from the supplied DIC Michaelis Escolar 3.0 about screen: August 2008, Editora Melhoramentos Ltda., Amigo Mouse Software, lexicography coordinated by Clóvis Osvaldo Gregorim, citations selected by Francisco S. Borba and Sebastião Expedito Ignácio, and etymology credited to Mário Eduardo Viaro (USP).
