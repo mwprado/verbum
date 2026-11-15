@@ -436,3 +436,38 @@ BGL / IDM-SKN / PKLZ / JSON / TEI / future Wiktionary importer
 ~~~
 
 VLF is the canonical operational and preservation format. Source formats remain import formats, not runtime dependencies.
+
+
+## 19. Operational recovery logs
+
+Recovery logs are not part of the VLF container.
+
+When a source resource is referenced but cannot be recovered safely, Verbum may preserve the corrupt reference in the VLF and additionally write a private JSON Lines recovery queue under:
+
+~~~text
+$XDG_DATA_HOME/verbum/logs/
+~~~
+
+or, when XDG_DATA_HOME is unset:
+
+~~~text
+~/.local/share/verbum/logs/
+~~~
+
+Current Longman logs use names such as:
+
+~~~text
+longman-unrecoverable-YYYYMMDDTHHMMSS.ffffffZ.jsonl
+~~~
+
+The first JSON object describes the import. Subsequent objects describe individual resources.
+
+Example:
+
+~~~json
+{"record_type":"resource","archive":"exa_pron","name":"p008_000/example.mp3","reason":"unrecoverable media record","status":"pending"}
+~~~
+
+These logs are intentionally external to VLF because they are a maintenance and recovery work queue. They can later be consumed by diagnostic extractors, alternative decoders, transcoding experiments or repair tools without altering the published dictionary database.
+
+The VLF itself remains authoritative about the lexical entry and records the unavailable resource with corrupt/corrupt_reason fields.
