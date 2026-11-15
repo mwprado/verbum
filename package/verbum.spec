@@ -1,4 +1,4 @@
-# Fedora-only for now. Requires Python >= 3.12 and GTK 4/libadwaita.
+# Fedora is the supported packaging target for now; EPEL chroots should be disabled in COPR.
 # Override upstream_repo if building before the GitHub repository is renamed.
 %{!?upstream_repo:%global upstream_repo verbum}
 # Source release tag must exist before building the SRPM.
@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        7%{?dist}
+Release:        8%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT
@@ -14,10 +14,6 @@ URL:            https://github.com/mwprado/%{upstream_repo}
 Source0:        %{url}/archive/refs/tags/verbum-%{version}.tar.gz#/%{name}-%{version}.tar.gz
 
 BuildArch:      noarch
-%if 0%{?rhel}
-%{error:Verbum packaging is temporarily disabled on EPEL 9/10; build on Fedora only}
-%endif
-
 BuildRequires:  python3-devel
 BuildRequires:  python3-gobject
 BuildRequires:  gobject-introspection
@@ -28,7 +24,11 @@ BuildRequires:  desktop-file-utils
 BuildRequires:  libappstream-glib
 BuildRequires:  shared-mime-info
 
+%if 0%{?fedora}
 Requires:       python3 >= 3.12
+%else
+Requires:       python3 >= 3.9
+%endif
 Requires:       python3-gobject
 Requires:       gobject-introspection
 Requires:       python3-cairo
@@ -41,8 +41,11 @@ Requires:       hicolor-icon-theme
 Requires:       shared-mime-info
 Requires:       desktop-file-utils
 Requires:       xdg-utils
-# BGL import is part of the supported GUI functionality.
+# BGL import is part of the supported Fedora GUI functionality.
+# EPEL packaging is temporarily out of scope and should be disabled in COPR.
+%if 0%{?fedora}
 Requires:       (python3dist(pyglossary) >= 5 with python3dist(pyglossary) < 6)
+%endif
 
 %description
 Verbum is a multilingual lexical service and native GNOME dictionary
@@ -50,7 +53,7 @@ application. It imports local dictionaries into Verbum Lexical Format
 (VLF), a SQLite-based storage format, and supports ranked lexical
 search, spelling suggestions, and contextual Longman audio.
 
-Babylon BGL import requires PyGlossary 5.x at runtime.
+Babylon BGL import requires PyGlossary 5.x on the supported Fedora builds.
 Dictionary contents are not distributed with this package.
 
 %prep
@@ -97,6 +100,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-8
+- Remove hard spec error for EPEL chroots
+- Require PyGlossary 5.x on Fedora builds only
+- Keep EPEL temporarily disabled through COPR project settings
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-7
 - Temporarily disable EPEL 9 and EPEL 10 builds
 - Make PyGlossary 5.x a mandatory runtime dependency
