@@ -78,10 +78,14 @@ def parse_entry(data, source_name):
         resource, topic = node.get("resource"), node.get("topic")
         if resource and topic:
             archive = resource.lower()
-            # Match the original LDOCE5 viewer/file-map semantics:
-            # audio resources are addressed by basename even when the XML
-            # topic contains an internal directory hierarchy.
-            name = topic.replace("\\", "/").split("/")[-1]
+            # Preserve the logical XML path for disambiguation.  The original
+            # file-map addresses audio by basename, but some source archives
+            # contain repeated basenames; keeping the path lets the importer
+            # select the intended physical record safely.
+            parts = [part for part in topic.replace("\\", "/").split("/") if part]
+            if parts and parts[0].lower() in (archive, archive + ".skn"):
+                parts = parts[1:]
+            name = "/".join(parts)
             if not name:
                 continue
             audio_indices[node] = len(media)
@@ -89,6 +93,7 @@ def parse_entry(data, source_name):
                 "type": "audio",
                 "archive": archive,
                 "name": name,
+                "basename": parts[-1],
             })
 
     def example_detail(node):
