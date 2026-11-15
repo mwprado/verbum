@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        45%{?dist}
+Release:        46%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,12 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-46
+- Use compact source names such as Aurélio, Michaelis and LDOCE in the GTK UI
+- Show the full dictionary edition title as a smaller secondary line
+- Add supplied Michaelis Escolar 3.0 publication and editorial metadata to the catalog
+- Keep full edition titles available in tooltips and provenance metadata
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-45
 - Improve Outras entradas e locuções as a compact navigable grid
 - Show only related headword titles, with count and a short interaction hint
