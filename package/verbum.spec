@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        26%{?dist}
+Release:        27%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,13 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-27
+- Fix legacy PKLZ top-level lemma-map detection
+- Do not collapse dictionaries containing lemmas named palavra, verbete or termo
+- Recognize scalar headword fields only when detecting a single legacy entry
+- Prefer lema_original metadata when present
+- Add regression coverage for Aurélio-style PKLZ records and casa lookup
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-26
 - Continue LDOCE5 import when a referenced media file is absent from the source archive
 - Preserve missing media references explicitly in VLF instead of silently dropping them
