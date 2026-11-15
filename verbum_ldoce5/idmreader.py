@@ -6,7 +6,7 @@
 
 import os.path
 from struct import unpack
-from zlib import decompress
+import zlib
 
 from configparser import ConfigParser
 
@@ -53,6 +53,40 @@ _ARCHIVE_DIRS = dict(
 
 def get_archive_names():
     return _ARCHIVE_DIRS.keys()
+
+
+def _decompress_block(data, required_end=None):
+    """Decompress one IDM block, recovering usable bytes from a bad zlib trailer.
+
+    Some original LDOCE5 media blocks contain a valid DEFLATE stream but an
+    inconsistent zlib Adler-32/trailing size.  Fall back to the raw DEFLATE
+    payload only when the requested record is completely present in the
+    recovered bytes.  This never fabricates or pads missing bytes.
+    """
+    try:
+        return zlib.decompress(data)
+    except zlib.error as original_error:
+        if len(data) < 7:
+            raise
+
+        cmf, flg = data[0], data[1]
+        if (cmf & 0x0F) != 8 or ((cmf << 8) + flg) % 31:
+            raise
+
+        start = 2
+        if flg & 0x20:
+            start += 4
+        if len(data) <= start + 4:
+            raise
+
+        try:
+            recovered = zlib.decompress(data[start:-4], -zlib.MAX_WBITS)
+        except zlib.error:
+            raise original_error
+
+        if required_end is not None and required_end > len(recovered):
+            raise original_error
+        return recovered
 
 
 def is_ldoce5_dir(path):
@@ -230,11 +264,14 @@ class ArchiveReader(object):
         (cmpoffset, cmpsize, origoffset, origsize) = location
         f = self._f
         f.seek(cmpoffset)
+        required_end = origoffset + origsize
         if (self._cache_offset != cmpoffset) or (self._cache_size != cmpsize):
-            self._cache = decompress(f.read(cmpsize))
+            self._cache = _decompress_block(f.read(cmpsize), required_end)
             self._cache_offset = cmpoffset
             self._cache_size = cmpsize
-        return self._cache[origoffset : (origoffset + origsize)]
+        if required_end > len(self._cache):
+            raise zlib.error("recovered IDM block does not contain the complete record")
+        return self._cache[origoffset:required_end]
 
     def __del__(self):
         self.close()
