@@ -21,7 +21,7 @@ class LegacyLemmaNormalizationTests(unittest.TestCase):
         })
         self.assertEqual(entry["lemma"], "Água")
         self.assertEqual(entry["source_lemma"], "Água$1$")
-        self.assertEqual(entry["homograph_index"], 1)
+        self.assertEqual(entry["homograph"], 1)
         self.assertNotIn("sense_index", entry)
 
     def test_source_marker_is_preserved_when_used_as_lemma(self):
@@ -31,7 +31,7 @@ class LegacyLemmaNormalizationTests(unittest.TestCase):
         })
         self.assertEqual(entry["lemma"], "Água benta")
         self.assertEqual(entry["source_lemma"], "Água benta$3$")
-        self.assertEqual(entry["homograph_index"], 3)
+        self.assertEqual(entry["homograph"], 3)
         self.assertNotIn("sense_index", entry)
 
 
