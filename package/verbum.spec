@@ -1,4 +1,4 @@
-# Fedora / EPEL 9 and 10. Requires Python >= 3.9 and GTK 4/libadwaita.
+# Fedora-only for now. Requires Python >= 3.12 and GTK 4/libadwaita.
 # Override upstream_repo if building before the GitHub repository is renamed.
 %{!?upstream_repo:%global upstream_repo verbum}
 # Source release tag must exist before building the SRPM.
@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        6%{?dist}
+Release:        7%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT
@@ -14,11 +14,11 @@ URL:            https://github.com/mwprado/%{upstream_repo}
 Source0:        %{url}/archive/refs/tags/verbum-%{version}.tar.gz#/%{name}-%{version}.tar.gz
 
 BuildArch:      noarch
-BuildRequires:  python3-devel
-%if 0%{?rhel} == 9
-BuildRequires:  python3-tomli
-Requires:       python3-tomli
+%if 0%{?rhel}
+%{error:Verbum packaging is temporarily disabled on EPEL 9/10; build on Fedora only}
 %endif
+
+BuildRequires:  python3-devel
 BuildRequires:  python3-gobject
 BuildRequires:  gobject-introspection
 BuildRequires:  python3-cairo
@@ -28,7 +28,7 @@ BuildRequires:  desktop-file-utils
 BuildRequires:  libappstream-glib
 BuildRequires:  shared-mime-info
 
-Requires:       python3 >= 3.9
+Requires:       python3 >= 3.12
 Requires:       python3-gobject
 Requires:       gobject-introspection
 Requires:       python3-cairo
@@ -41,15 +41,8 @@ Requires:       hicolor-icon-theme
 Requires:       shared-mime-info
 Requires:       desktop-file-utils
 Requires:       xdg-utils
-# BGL import uses PyGlossary when available. Keep it as a weak dependency
-# until python-pyglossary is provided by the Cangaceiro repository; this
-# preserves installability on Fedora/EPEL while allowing DNF to pull it in
-# automatically once a provider exists.
-%if 0%{?rhel} == 9
-Recommends:     (python3dist(pyglossary) >= 4.6.1 with python3dist(pyglossary) < 5)
-%else
-Recommends:     (python3dist(pyglossary) >= 5 with python3dist(pyglossary) < 6)
-%endif
+# BGL import is part of the supported GUI functionality.
+Requires:       (python3dist(pyglossary) >= 5 with python3dist(pyglossary) < 6)
 
 %description
 Verbum is a multilingual lexical service and native GNOME dictionary
@@ -57,7 +50,7 @@ application. It imports local dictionaries into Verbum Lexical Format
 (VLF), a SQLite-based storage format, and supports ranked lexical
 search, spelling suggestions, and contextual Longman audio.
 
-Babylon BGL import uses the optional PyGlossary runtime dependency.
+Babylon BGL import requires PyGlossary 5.x at runtime.
 Dictionary contents are not distributed with this package.
 
 %prep
@@ -104,6 +97,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-7
+- Temporarily disable EPEL 9 and EPEL 10 builds
+- Make PyGlossary 5.x a mandatory runtime dependency
+- Target Fedora with Python 3.12 or newer
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-6
 - Keep PyGlossary as a weak dependency until a provider exists in Cangaceiro
 - Preserve Verbum installation on Fedora and EPEL without PyGlossary
