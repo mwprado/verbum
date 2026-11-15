@@ -17,6 +17,76 @@ AUDIO_ARCHIVES = frozenset(("gb_hwd_pron", "us_hwd_pron", "exa_pron", "sfx", "so
 MEDIA_ARCHIVES = AUDIO_ARCHIVES | {"picture"}
 
 
+_MPEG1_L3_BITRATES = (0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0)
+_MPEG2_L3_BITRATES = (0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0)
+_MPEG_SAMPLE_RATES = (44100, 48000, 32000)
+
+
+def _mpeg_frame_length(data, offset):
+    """Return an MPEG Layer III frame length, or None for an invalid header."""
+    if offset < 0 or offset + 4 > len(data):
+        return None
+    b0, b1, b2, _b3 = data[offset:offset + 4]
+    if b0 != 0xFF or (b1 & 0xE0) != 0xE0:
+        return None
+
+    version = (b1 >> 3) & 0x03
+    layer = (b1 >> 1) & 0x03
+    bitrate_index = (b2 >> 4) & 0x0F
+    sample_index = (b2 >> 2) & 0x03
+    padding = (b2 >> 1) & 0x01
+
+    # MP3 = MPEG Layer III.  Version 01 and sample-rate index 11 are reserved.
+    if version == 0x01 or layer != 0x01 or sample_index == 0x03:
+        return None
+    if bitrate_index in (0, 0x0F):
+        return None
+
+    if version == 0x03:  # MPEG-1
+        bitrate = _MPEG1_L3_BITRATES[bitrate_index] * 1000
+        sample_rate = _MPEG_SAMPLE_RATES[sample_index]
+        return (144 * bitrate) // sample_rate + padding
+
+    # MPEG-2 / MPEG-2.5 Layer III
+    bitrate = _MPEG2_L3_BITRATES[bitrate_index] * 1000
+    divisor = 2 if version == 0x02 else 4
+    sample_rate = _MPEG_SAMPLE_RATES[sample_index] // divisor
+    return (72 * bitrate) // sample_rate + padding
+
+
+def _id3v2_end(data):
+    if not data.startswith(b"ID3") or len(data) < 10:
+        return 0
+    size_bytes = data[6:10]
+    if any(value & 0x80 for value in size_bytes):
+        return 0
+    size = 0
+    for value in size_bytes:
+        size = (size << 7) | value
+    end = 10 + size
+    return end if end <= len(data) else 0
+
+
+def _validate_mpeg_audio(data):
+    """Sanity-check extracted MP3 bytes without requiring an external decoder.
+
+    Exact record length is checked separately.  Here we require at least two
+    consecutive valid Layer III frames near the beginning, after an optional
+    ID3v2 tag.  This catches wrong slices/offsets while accepting normal VBR MP3.
+    """
+    start = _id3v2_end(data)
+    search_end = min(len(data) - 4, start + 4096)
+    for pos in range(start, max(start, search_end) + 1):
+        first = _mpeg_frame_length(data, pos)
+        if not first:
+            continue
+        second_pos = pos + first
+        second = _mpeg_frame_length(data, second_pos)
+        if second and second_pos + second <= len(data):
+            return True
+    return False
+
+
 def _archive_signature(source, archive):
     base = Path(source) / (archive + ".skn")
     files = [
@@ -213,6 +283,8 @@ def read_media(source, archive, name):
         else:
             raise ValueError("unsupported picture encoding")
     else:
+        if not _validate_mpeg_audio(data):
+            raise ValueError("invalid MPEG audio record")
         mime = "audio/mpeg"
 
     return data, mime
