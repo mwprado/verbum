@@ -28,6 +28,7 @@ class LegacyStructureTests(unittest.TestCase):
         entry = _structure_legacy_definition({"lemma": "água", "definition": raw})
         self.assertEqual(len(entry["senses"]), 2)
         self.assertNotIn("Água benta", entry["senses"][1]["definitions"][0])
+        self.assertTrue(entry["legacy_tail"].startswith("Água benta. 1."))
         self.assertIn("1. Entrada separada.", entry["legacy_tail"])
 
     def test_non_sequential_numbers_are_not_guessed_as_senses(self):
