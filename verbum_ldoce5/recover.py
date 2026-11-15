@@ -99,14 +99,16 @@ def _download(url, opener=urlopen):
 
 
 def _ensure_extra_rows(rows, names):
-    existing = {
-        (row.get("archive"), row.get("name"))
+    existing_exa = {
+        _safe_leaf(row.get("name") or "")
         for row in rows[1:]
         if row.get("record_type") == "resource"
+        and row.get("archive") == "exa_pron"
+        and row.get("name")
     }
     for name in names:
-        key = ("exa_pron", name)
-        if key in existing:
+        leaf = _safe_leaf(name)
+        if leaf in existing_exa:
             continue
         rows.append({
             "record_type": "resource",
@@ -117,7 +119,11 @@ def _ensure_extra_rows(rows, names):
             "reason": "manual recovery candidate",
             "status": "pending",
         })
-        existing.add(key)
+        existing_exa.add(leaf)
+
+    rows[0]["count"] = sum(
+        1 for row in rows[1:] if row.get("record_type") == "resource"
+    )
 
 
 def recover_log(log_path, *, version=DEFAULT_VERSION, output_root=None,
