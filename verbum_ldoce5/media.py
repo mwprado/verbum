@@ -28,15 +28,28 @@ def _archive_signature(source, archive):
     return tuple((p.stat().st_size, p.stat().st_mtime_ns) for p in files)
 
 
+def _add_location(result, key, location):
+    key = key.strip("/")
+    if not key:
+        return
+    if key in result and result[key] != location:
+        result[key] = None
+    else:
+        result[key] = location
+
+
 @lru_cache(maxsize=16)
 def _locations(source, archive, signature):
     result = {}
     for dirs, name, location in idmreader.list_files(source, archive):
-        key = dirs[0] + "/" + name if archive == "picture" else name
-        if key in result and result[key] != location:
-            result[key] = None
-        else:
-            result[key] = location
+        clean_dirs = [part for part in dirs if part]
+        full = "/".join((*clean_dirs, name))
+        # Index the complete internal path, the final directory + basename,
+        # and the basename itself. Ambiguous aliases are explicitly disabled.
+        _add_location(result, full, location)
+        if clean_dirs:
+            _add_location(result, clean_dirs[-1] + "/" + name, location)
+        _add_location(result, name, location)
     return result
 
 
@@ -48,15 +61,18 @@ def read_media(source, archive, name):
         part in ("", ".", "..") for part in name.split("/")
     ):
         raise ValueError("invalid media name")
+    parts = name.split("/")
     if archive == "picture":
-        parts = name.split("/")
         if len(parts) != 2 or parts[0] not in ("thumbnail", "fullsize"):
             raise ValueError("invalid picture name")
-    elif "/" in name:
-        raise ValueError("invalid audio name")
 
     signature = _archive_signature(source, archive)
-    location = _locations(source, archive, signature).get(name)
+    locations = _locations(source, archive, signature)
+    location = locations.get(name)
+    if location is None and archive != "picture":
+        # Compatibility with older VLF/importer generations that retained
+        # only a basename. This succeeds only when that basename is unique.
+        location = locations.get(parts[-1])
     if location is None:
         raise ValueError("missing or ambiguous media resource: " + archive + "/" + name)
     if any(value < 0 for value in location) or location[3] > 64 * 1024 * 1024:
