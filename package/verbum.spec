@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        51%{?dist}
+Release:        52%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,12 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-52
+- Skip fully empty legacy sequence records before tuple/list entry conversion
+- Prevent blank tuple/list records from becoming empty-lemma entries
+- Keep non-empty malformed legacy records as hard errors
+- Fix the only failing regression test from release 51
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-51
 - Allow selecting multiple BGL files in one import operation
 - Allow selecting multiple Pickle/PKLZ files in one import operation
