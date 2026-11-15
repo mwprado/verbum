@@ -362,6 +362,26 @@ _LEGACY_GRAMMAR_PREFIX = re.compile(
     re.IGNORECASE,
 )
 _LEGACY_SENSE_MARKER = re.compile(r"(?<!\S)(\d{1,3})\.\s+")
+_LEGACY_EMBEDDED_HEADWORD = re.compile(
+    r"(?:^|[.!?]\s+)"
+    r"(?P<headword>[A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-Za-zÀ-ÖØ-öø-ÿ0-9'’()/-]*(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ0-9'’()/-]+){0,9})"
+    r"\.\s+1\.\s+"
+)
+
+
+def _legacy_tail_headwords(text):
+    """Return embedded legacy headword titles without their definitions."""
+    if not isinstance(text, str) or not text.strip():
+        return []
+    result = []
+    seen = set()
+    for match in _LEGACY_EMBEDDED_HEADWORD.finditer(text):
+        headword = " ".join(match.group("headword").split()).strip()
+        key = headword.casefold()
+        if headword and key not in seen:
+            seen.add(key)
+            result.append(headword)
+    return result
 
 
 def _structure_legacy_definition(entry):
@@ -461,6 +481,9 @@ def _structure_legacy_definition(entry):
     tail = rest[stop:].strip()
     if tail:
         entry.setdefault("legacy_tail", tail)
+        headwords = _legacy_tail_headwords(tail)
+        if headwords:
+            entry.setdefault("legacy_entries", headwords)
     return entry
 
 _LEGACY_HOMOGRAPH_SUFFIX = re.compile(r"(?:\$(\d+)\$)+$")
