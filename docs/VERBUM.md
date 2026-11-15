@@ -55,3 +55,10 @@ source formats -> importers -> VLF -> Verbum
 Source formats include BGL, LDOCE5 IDM/SKN, legacy PKLZ, JSON/JSONL and future structured importers. Once resources are embedded successfully, the VLF is self-contained and normal use does not depend on the original dictionary directory.
 
 Do not redistribute imported dictionary content unless its license permits redistribution.
+
+
+## Unrecoverable media log
+
+Longman imports no longer discard the identity of individual media resources that cannot be recovered safely. When at least one such resource is encountered, Verbum writes a private JSONL recovery queue under `~/.local/share/verbum/logs/` (or `$XDG_DATA_HOME/verbum/logs/`).
+
+Each resource record contains its source archive, logical name, failure reason and initial `pending` status. The log is intended for later batch extraction and testing with alternative decoders or media formats. It is not embedded into the VLF; the VLF separately retains the corrupt resource reference.
