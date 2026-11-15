@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        22%{?dist}
+Release:        23%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,12 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-23
+- Recover protocol 0/1 class-based legacy Pickle files through inert proxy objects
+- Handle copyreg/copy_reg _reconstructor without importing original classes
+- Convert recovered instance state directly to JSON-safe VLF data
+- Recognize verbete and palavra as legacy Portuguese lemma fields
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-22
 - Normalize legacy Pickle/PKLZ records to JSON-safe VLF primitives
 - Decode bytes and convert tuples recursively before indexing
