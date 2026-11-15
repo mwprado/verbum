@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        18%{?dist}
+Release:        19%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,12 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-19
+- Preserve logical XML paths for LDOCE5 audio resources
+- Disambiguate repeated audio basenames using unique path suffixes
+- Fall back to basename only when it maps to exactly one SKN record
+- Include the failing resource path in media import diagnostics
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-18
 - Match original LDOCE5 audio file-map semantics
 - Resolve GB/US/example/SFX audio by basename from XML topic
