@@ -28,6 +28,29 @@ class MissingResourceTests(unittest.TestCase):
         self.assertIn("sha256", result["media"][1])
         self.assertEqual(db.execute("SELECT count(*) FROM resources").fetchone()[0], 1)
 
+    def test_corrupt_source_media_is_preserved_without_binary_payload(self):
+        db = sqlite3.connect(":memory:")
+        db.execute("CREATE TABLE resources (sha256 TEXT PRIMARY KEY, mime TEXT NOT NULL, content BLOB NOT NULL)")
+
+        payload = {
+            "lemma": "demo",
+            "media": [
+                {"type": "audio", "archive": "exa_pron", "name": "broken.mp3"},
+            ],
+        }
+        result = embed_resources(
+            db,
+            payload,
+            lambda *_: {"unavailable": True, "reason": "unrecoverable media record"},
+            {},
+        )
+
+        ref = result["media"][0]
+        self.assertTrue(ref["corrupt"])
+        self.assertEqual(ref["corrupt_reason"], "unrecoverable media record")
+        self.assertNotIn("sha256", ref)
+        self.assertEqual(db.execute("SELECT count(*) FROM resources").fetchone()[0], 0)
+
     def test_invalid_present_media_still_fails(self):
         db = sqlite3.connect(":memory:")
         db.execute("CREATE TABLE resources (sha256 TEXT PRIMARY KEY, mime TEXT NOT NULL, content BLOB NOT NULL)")
