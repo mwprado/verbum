@@ -101,6 +101,8 @@ def _write_unrecoverable_log(registry, source, result, corrupt):
             "record_type": "resource",
             "archive": archive,
             "name": name,
+            "media_type": "image" if archive == "picture" else "audio",
+            "extension": Path(name).suffix.lower(),
             "reason": reason,
             "status": "pending",
         }, ensure_ascii=False, sort_keys=True))
@@ -152,6 +154,8 @@ class _LongmanMediaLoader:
                 "unrecoverable media record",
                 "empty or truncated media record",
                 "invalid MPEG audio record",
+                "unsupported picture encoding",
+                "invalid media record size",
             )):
                 self.corrupt[(archive, name)] = detail
                 return {"unavailable": True, "reason": detail}
