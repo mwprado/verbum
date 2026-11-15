@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        25%{?dist}
+Release:        26%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,13 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-26
+- Continue LDOCE5 import when a referenced media file is absent from the source archive
+- Preserve missing media references explicitly in VLF instead of silently dropping them
+- Embed every media resource that is actually present
+- Report the number of missing source resources after import
+- Keep corrupt or invalid media as hard import errors
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-25
 - Fix Python 3 syntax in PKLZ regression tests
 - Encode non-ASCII byte fixtures explicitly as UTF-8
