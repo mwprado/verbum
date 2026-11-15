@@ -1,7 +1,8 @@
 import unittest
+import zlib
 from unittest.mock import patch
 
-from verbum_ldoce5 import media
+from verbum_ldoce5 import idmreader, media
 
 
 class _Reader:
@@ -75,6 +76,30 @@ class Ldoce5MediaIndexTests(unittest.TestCase):
             )
         self.assertEqual(location, first)
         self.assertIn("duplicate-identical", rule)
+
+    def test_bad_zlib_trailer_recovers_complete_requested_record(self):
+        payload = b"A" * 11076 + b"B" * 512
+        compressed = bytearray(zlib.compress(payload))
+        compressed[-1] ^= 0x01
+        recovered = idmreader._decompress_block(bytes(compressed), 11076)
+        self.assertGreaterEqual(len(recovered), 11076)
+        self.assertEqual(recovered[:11076], b"A" * 11076)
+
+    def test_bad_zlib_trailer_does_not_accept_missing_requested_bytes(self):
+        payload = b"A" * 100
+        compressed = bytearray(zlib.compress(payload))
+        compressed[-1] ^= 0x01
+        with self.assertRaises(zlib.error):
+            idmreader._decompress_block(bytes(compressed), 101)
+
+    def test_mpeg_validation_accepts_two_consecutive_layer3_frames(self):
+        # MPEG-1 Layer III, 128 kb/s, 44.1 kHz => 417-byte frame.
+        header = bytes((0xFF, 0xFB, 0x90, 0x64))
+        frame = header + bytes(417 - len(header))
+        self.assertTrue(media._validate_mpeg_audio(frame + frame))
+
+    def test_mpeg_validation_rejects_arbitrary_bytes(self):
+        self.assertFalse(media._validate_mpeg_audio(b"ID3" + bytes(1000)))
 
     def test_conflicting_duplicate_follows_original_cdb_first(self):
         first = (0, 10, 0, 4)
