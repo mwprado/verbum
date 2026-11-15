@@ -191,7 +191,7 @@ def _location_digest(source, archive, signature, location):
         with idmreader.ArchiveReader(source, archive) as reader:
             data = reader.read(location)
     except zlib.error as exc:
-        raise ValueError("corrupt media record") from exc
+        raise ValueError("unrecoverable media record") from exc
     if not data or len(data) != location[3]:
         raise ValueError("empty or truncated media record")
     return hashlib.sha256(data).digest()
@@ -269,7 +269,7 @@ def read_media(source, archive, name):
         with idmreader.ArchiveReader(source, archive) as reader:
             data = reader.read(location)
     except zlib.error as exc:
-        raise ValueError("corrupt media record") from exc
+        raise ValueError("unrecoverable media record") from exc
     if not data or len(data) != location[3]:
         raise ValueError("empty or truncated media record")
 
