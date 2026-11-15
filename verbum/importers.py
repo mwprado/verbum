@@ -124,7 +124,9 @@ class _RestrictedUnpickler(pickle.Unpickler):
         )
 
 
-def _validate_pickle_value(value, *, depth=0, items=[0]):
+def _validate_pickle_value(value, *, depth=0, items=None):
+    if items is None:
+        items = [0]
     if depth > 64:
         raise ValueError("Pickle legado excede a profundidade estrutural permitida.")
     items[0] += 1
