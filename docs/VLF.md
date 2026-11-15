@@ -471,3 +471,8 @@ Example:
 These logs are intentionally external to VLF because they are a maintenance and recovery work queue. They can later be consumed by diagnostic extractors, alternative decoders, transcoding experiments or repair tools without altering the published dictionary database.
 
 The VLF itself remains authoritative about the lexical entry and records the unavailable resource with corrupt/corrupt_reason fields.
+
+
+### Recovery status extension
+
+Operational JSONL recovery records may transition from `pending` to `recovered` or `failed`. A recovered record may contain the official source URL, private recovered path, byte size, MIME type, SHA-256 and UTC recovery timestamp. These fields remain external operational metadata and do not change the VLF schema.
