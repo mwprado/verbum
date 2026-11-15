@@ -65,6 +65,9 @@ def get_media(registry, dictionary, entry_id, index, fullsize=False):
         raise ValueError("Unknown media index")
     ref = refs[index]
 
+    missing_key = "fullsize_missing" if fullsize else "missing"
+    if ref.get(missing_key):
+        raise ValueError("Recurso ausente na fonte original LDOCE5.")
     digest_key = "fullsize_sha256" if fullsize else "sha256"
     if ref.get(digest_key):
         return get_embedded_media(registry, dictionary, entry_id, index, fullsize)
