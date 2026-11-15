@@ -788,8 +788,8 @@ def import_dictionary(registry, metadata, source, source_format="json", *, progr
 # Shared importer descriptions for clients. Only implemented formats are listed.
 IMPORT_FORMATS = (
     {"id": "longman", "title": "Longman LDOCE5", "description": "Diretório original IDM/SKN", "directory": True, "manifest": False},
-    {"id": "bgl", "title": "Babylon BGL", "description": "Arquivo original .bgl (requer PyGlossary)", "directory": False, "manifest": False},
-    {"id": "pickle", "title": "Pickle / PKLZ legado", "description": "Arquivo .pkl, .pickle ou .pklz; desserialização restrita e conversão imediata para VLF", "directory": False, "manifest": False},
+    {"id": "bgl", "title": "Babylon BGL", "description": "Um ou mais arquivos .bgl (requer PyGlossary)", "directory": False, "manifest": False, "multiple": True},
+    {"id": "pickle", "title": "Pickle / PKLZ legado", "description": "Um ou mais arquivos .pkl, .pickle ou .pklz; desserialização restrita e conversão imediata para VLF", "directory": False, "manifest": False, "multiple": True},
     {"id": "json", "title": "JSON", "description": "Arquivo estruturado com manifesto TOML", "directory": False, "manifest": True},
     {"id": "jsonl", "title": "JSON Lines", "description": "Arquivo de registros JSON com manifesto TOML", "directory": False, "manifest": True},
 )
