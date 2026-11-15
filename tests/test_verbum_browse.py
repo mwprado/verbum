@@ -182,5 +182,72 @@ class DictionaryBrowseTests(unittest.TestCase):
 
 
 
+    def test_hash_index_contains_numbers_and_symbols_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = Registry(tmp)
+            imported = registry.import_entries(
+                {
+                    "title": "Índices",
+                    "language": "pt-br",
+                    "origin": "indices",
+                    "function": "general",
+                    "license": "test",
+                    "license_type": "unspecified",
+                    "access": "local",
+                },
+                [
+                    {"lemma": "#hashtag", "definition": "símbolo"},
+                    {"lemma": "123", "definition": "número"},
+                    {"lemma": "abacate", "definition": "A"},
+                    {"lemma": "Ωmega", "definition": "grego"},
+                ],
+            )
+
+            first = registry.browse_entry(
+                imported["slug"], letter="#", edge="first"
+            )
+            last = registry.browse_entry(
+                imported["slug"], letter="#", edge="last"
+            )
+
+            self.assertIn(first["entry"]["lemma"], {"#hashtag", "123"})
+            self.assertIn(last["entry"]["lemma"], {"#hashtag", "123"})
+            self.assertNotEqual(first["entry"]["lemma"], "Ωmega")
+            self.assertNotEqual(last["entry"]["lemma"], "Ωmega")
+
+    def test_index_edges_return_first_and_last_word_of_letter(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = Registry(tmp)
+            imported = registry.import_entries(
+                {
+                    "title": "Faixa A",
+                    "language": "pt-br",
+                    "origin": "faixa-a",
+                    "function": "general",
+                    "license": "test",
+                    "license_type": "unspecified",
+                    "access": "local",
+                },
+                [
+                    {"lemma": "abacate", "definition": "1"},
+                    {"lemma": "azul", "definition": "2"},
+                    {"lemma": "Água", "definition": "3"},
+                    {"lemma": "bola", "definition": "4"},
+                ],
+            )
+
+            first = registry.browse_entry(
+                imported["slug"], letter="A", edge="first"
+            )
+            last = registry.browse_entry(
+                imported["slug"], letter="A", edge="last"
+            )
+
+            self.assertEqual(first["entry"]["lemma"], "abacate")
+            self.assertEqual(last["index"], "A")
+            self.assertIn(last["entry"]["lemma"], {"azul", "Água"})
+
+
+
 if __name__ == "__main__":
     unittest.main()
