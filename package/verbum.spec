@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        54%{?dist}
+Release:        55%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,13 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-55
+- Preserve dictionary entries that sort before A or after Z in lexical navigation
+- Keep A-Z as jump indices only, not as dictionary boundaries
+- Open the true first entry when a dictionary is selected
+- Allow previous/next word navigation to cross both A and Z boundaries
+- Add regression coverage for numeric and non-Latin headwords
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-54
 - Remove Ir para and visual page navigation from dictionary browsing
 - Restore the full scrollable entry panel as the primary dictionary view
