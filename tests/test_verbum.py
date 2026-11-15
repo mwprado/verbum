@@ -163,11 +163,9 @@ class VerbumTests(unittest.TestCase):
     def test_restricted_pickle_rejects_globals(self):
         import pickle
         from verbum.importers import pickle_entries
-        class Unsafe:
-            pass
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "unsafe.pkl"
-            source.write_bytes(pickle.dumps(Unsafe(), protocol=4))
+            source.write_bytes(pickle.dumps(eval, protocol=4))
             with self.assertRaises(ValueError):
                 list(pickle_entries(source))
 
