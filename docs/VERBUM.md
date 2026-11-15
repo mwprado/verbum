@@ -62,3 +62,38 @@ Do not redistribute imported dictionary content unless its license permits redis
 Longman imports no longer discard the identity of individual media resources that cannot be recovered safely. When at least one such resource is encountered, Verbum writes a private JSONL recovery queue under `~/.local/share/verbum/logs/` (or `$XDG_DATA_HOME/verbum/logs/`).
 
 Each resource record contains its source archive, logical name, failure reason and initial `pending` status. The log is intended for later batch extraction and testing with alternative decoders or media formats. It is not embedded into the VLF; the VLF separately retains the corrupt resource reference.
+
+
+## Official LDOCE Online recovery
+
+For a user-owned LDOCE5 installation, an `exa_pron` resource that is present in the IDM/SKN catalog but cannot be recovered safely from a damaged TDZ block can be retried against the official LDOCE Online example-pronunciation media service.
+
+The command is:
+
+~~~text
+verbum-ldoce5-recover ~/.local/share/verbum/logs/longman-unrecoverable-*.jsonl
+~~~
+
+The helper only handles `exa_pron` MP3 resources. It derives the official URL from the resource basename, downloads the candidate, validates it as MPEG Layer III, calculates SHA-256 and writes it under the private Verbum recovery area:
+
+~~~text
+~/.local/share/verbum/recovery/longman/exa_pron/
+~~~
+
+The original LDOCE5 IDM/SKN tree and the published VLF are never modified.
+
+Additional candidates may be supplied with repeated `--name` options. This is useful when a damaged TDZ block contains records that were discovered during forensic auditing but were not all present in the original JSONL log.
+
+For the known block 2689 investigation:
+
+~~~text
+verbum-ldoce5-recover \
+  ~/.local/share/verbum/logs/longman-unrecoverable-*.jsonl \
+  --name p008-000599574.mp3 \
+  --name p008-000599598.mp3 \
+  --name p008-000599625.mp3 \
+  --name p008-000599671.mp3 \
+  --name p008-000599672.mp3
+~~~
+
+Successful records are marked `recovered` in the JSONL log and include `recovered_url`, `recovered_path`, `recovered_size`, `recovered_sha256` and `recovered_at`. Failed records are marked `failed` with the last recovery error and remain retryable by a later invocation.
