@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        31%{?dist}
+Release:        32%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,13 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-32
+- Advance IDM media catalog scans across any number of skipped compression blocks
+- Distinguish unrecoverable source media from genuinely missing resources
+- Preserve corrupt media references and diagnostic reason in VLF
+- Continue Longman import when an individual source media record is irrecoverable
+- Report separate missing_resources and corrupt_resources counts
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-31
 - Publish the formal VLF v2 specification
 - Support original plus preferred derived media representations in VLF
