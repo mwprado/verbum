@@ -237,12 +237,23 @@ class Registry:
                 key = normalize(str(letter))
                 if len(key) != 1 or not ("a" <= key <= "z"):
                     raise ValueError("letter must be A..Z")
-                upper = chr(ord(key) + 1)
+                variants = {
+                    "a": "aáàâãäå",
+                    "c": "cç",
+                    "e": "eéèêë",
+                    "i": "iíìîï",
+                    "n": "nñ",
+                    "o": "oóòôõöø",
+                    "u": "uúùûü",
+                    "y": "yýÿ",
+                }.get(key, key)
+                clauses = " OR ".join("normalized LIKE ?" for _ in variants)
+                params = tuple(char + "%" for char in variants)
                 row = db.execute(
-                    "SELECT id,payload FROM entries "
-                    "WHERE normalized>=? AND normalized<? "
-                    "ORDER BY normalized,lemma,id LIMIT 1",
-                    (key, upper),
+                    "SELECT id,payload FROM entries WHERE "
+                    + clauses
+                    + " ORDER BY normalized,lemma,id LIMIT 1",
+                    params,
                 ).fetchone()
             elif entry_id is None:
                 row = db.execute(
