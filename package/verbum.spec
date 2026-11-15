@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        49%{?dist}
+Release:        50%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,14 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-50
+- Add alphabet navigation (0-9 and A-Z) to dictionary browsing
+- Add an Ir para field for direct lexical repositioning by headword or prefix
+- Implement indexed seek-to-page using the existing normalized VLF index
+- Keep jumps as repositioning operations rather than search filters
+- Preserve Previous/Next pagination after alphabet or direct jumps
+- Add regression coverage for lexical seek navigation
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-49
 - Browse all headwords when an installed dictionary is selected with an empty search
 - Add SQLite LIMIT/OFFSET pagination without loading the full dictionary into memory
