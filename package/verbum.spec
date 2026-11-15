@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        13%{?dist}
+Release:        14%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,12 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-14
+- Add restricted legacy Pickle/PKLZ importer
+- Reject arbitrary Python globals, classes and functions during unpickling
+- Normalize common dictionary structures directly into VLF
+- Expose Pickle/PKLZ import in GTK and CLI
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-13
 - Preserve full LDOCE5 audio paths from XML metadata
 - Resolve media by full internal path with safe unique-basename fallback
