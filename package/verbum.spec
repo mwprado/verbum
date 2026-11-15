@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        50%{?dist}
+Release:        51%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,14 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-51
+- Allow selecting multiple BGL files in one import operation
+- Allow selecting multiple Pickle/PKLZ files in one import operation
+- Import selected files sequentially into independent VLF dictionaries
+- Continue the batch when one file fails or is already installed
+- Show per-file progress and a final imported/skipped/failed summary
+- Keep rebuild operations single-source for dictionary identity safety
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-50
 - Add alphabet navigation (0-9 and A-Z) to dictionary browsing
 - Add an Ir para field for direct lexical repositioning by headword or prefix
