@@ -237,9 +237,8 @@ def list_files(data_root, archive_name):
     dirs = _load_dirlist(target_base, info)
     ci = 0
     for (name, parent, offset, size) in _load_filelist(target_base, info):
-        if ci != len(origoffsets) - 1:
-            if offset >= origoffsets[ci + 1]:
-                ci += 1
+        while ci != len(origoffsets) - 1 and offset >= origoffsets[ci + 1]:
+            ci += 1
         (cmporig, cmpsize) = cmpoffsets[ci], cmpsizes[ci]
         if size < 0:
             size = origsizes[ci] - (offset - origoffsets[ci]) - 1
