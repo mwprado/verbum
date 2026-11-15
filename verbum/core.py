@@ -225,8 +225,13 @@ class Registry:
                 except OSError:
                     pass
 
-    def browse(self, dictionary, page=0, page_size=100):
-        """Browse one installed dictionary without loading its full index."""
+    def browse(self, dictionary, page=0, page_size=100, seek=None):
+        """Browse one installed dictionary without loading its full index.
+
+        If seek is provided, reposition to the page containing the first
+        headword at or after the normalized seek key. The seek is a jump, not
+        a filter; subsequent pages continue through the full dictionary.
+        """
         if not isinstance(page, int) or page < 0:
             raise ValueError("page must be a non-negative integer")
         if not isinstance(page_size, int) or not 1 <= page_size <= 500:
@@ -236,7 +241,17 @@ class Registry:
         with closing(connect_read(path)) as db:
             total = db.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
             pages = max(1, (total + page_size - 1) // page_size)
-            page = min(page, pages - 1)
+
+            seek_key = normalize(seek) if isinstance(seek, str) else ""
+            if seek_key:
+                rank = db.execute(
+                    "SELECT COUNT(*) FROM entries WHERE normalized < ?",
+                    (seek_key,),
+                ).fetchone()[0]
+                page = min(rank // page_size, pages - 1)
+            else:
+                page = min(page, pages - 1)
+
             rows = db.execute(
                 "SELECT id,payload FROM entries "
                 "ORDER BY normalized,lemma,id LIMIT ? OFFSET ?",
@@ -258,6 +273,7 @@ class Registry:
             "page_size": page_size,
             "total": total,
             "pages": pages,
+            "seek": seek_key or None,
             "hits": hits,
         }
 
