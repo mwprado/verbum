@@ -44,7 +44,7 @@ def read_media(source, archive, name):
     if archive not in MEDIA_ARCHIVES:
         raise ValueError("unsupported media archive")
     source = str(validate_source(source))
-    if not isinstance(name, str) or not name or "\" in name or any(
+    if not isinstance(name, str) or not name or "\\" in name or any(
         part in ("", ".", "..") for part in name.split("/")
     ):
         raise ValueError("invalid media name")
