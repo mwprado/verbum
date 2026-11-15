@@ -143,17 +143,33 @@ def _collapse_identical(source, archive, signature, locations):
 
 def _resolve_location(source, archive, name, signature):
     diagnostics = []
+    original_fallback = None
+
     for rule, locations in _candidate_sets(source, archive, name, signature):
         if len(locations) == 1:
             return locations[0], rule
+
         location = _collapse_identical(source, archive, signature, locations)
         if location is not None:
             return location, rule + ":duplicate-identical"
+
         diagnostics.append((rule, len(locations)))
+
+        # The original LDOCE5 filemap stores duplicate CDB keys in SKN scan
+        # order. CDBReader starts at the common hash slot, therefore the
+        # first inserted duplicate is the value returned by the original
+        # application. Preserve that deterministic behavior only as the
+        # final fallback, after path-aware disambiguation and byte-level
+        # deduplication have both failed.
+        if rule in ("logical", "basename") and original_fallback is None:
+            original_fallback = locations[0]
+
+    if original_fallback is not None:
+        return original_fallback, "original-cdb-first"
 
     detail = ", ".join(f"{rule}={count}" for rule, count in diagnostics)
     raise ValueError(
-        "missing or ambiguous media resource: "
+        "missing media resource: "
         + archive + "/" + name
         + (f" [candidates: {detail}]" if detail else "")
     )
