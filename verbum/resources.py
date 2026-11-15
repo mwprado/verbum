@@ -11,7 +11,11 @@ def embed_resources(db, payload, loader, cache, cancel=None):
         check_cancel(cancel)
         key = (archive, name)
         if key not in cache:
-            content, mime = loader(archive, name)
+            loaded = loader(archive, name)
+            if loaded is None:
+                cache[key] = None
+                return None
+            content, mime = loaded
             if not isinstance(content, bytes) or not content or len(content) > 64*1024*1024:
                 raise ValueError("Invalid resource size: " + str(name))
             if not isinstance(mime, str) or not mime.startswith(("audio/", "image/")):
@@ -24,9 +28,17 @@ def embed_resources(db, payload, loader, cache, cancel=None):
         return cache[key]
     for original in payload.get("media", []):
         ref = dict(original)
-        ref["sha256"] = embed(ref["archive"], ref["name"])
+        digest = embed(ref["archive"], ref["name"])
+        if digest:
+            ref["sha256"] = digest
+        else:
+            ref["missing"] = True
         if ref.get("fullsize"):
-            ref["fullsize_sha256"] = embed(ref["archive"], ref["fullsize"])
+            fullsize_digest = embed(ref["archive"], ref["fullsize"])
+            if fullsize_digest:
+                ref["fullsize_sha256"] = fullsize_digest
+            else:
+                ref["fullsize_missing"] = True
         refs.append(ref)
     return dict(payload, media=refs)
 
@@ -42,6 +54,9 @@ def get_embedded_media(registry, dictionary, entry_id, index, fullsize=False):
         ref = refs[index]
         if fullsize and ref.get("type") != "image":
             raise ValueError("Fullsize applies only to pictures")
+        missing_key = "fullsize_missing" if fullsize else "missing"
+        if ref.get(missing_key):
+            raise ValueError("Recurso ausente na fonte original do dicionário.")
         digest = ref.get("fullsize_sha256" if fullsize else "sha256")
         if not digest:
             raise ValueError("Recurso não incorporado; converta a base original para VLF v2.")
