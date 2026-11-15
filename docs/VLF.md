@@ -476,3 +476,8 @@ The VLF itself remains authoritative about the lexical entry and records the una
 ### Recovery status extension
 
 Operational JSONL recovery records may transition from `pending` to `recovered` or `failed`. A recovered record may contain the official source URL, private recovered path, byte size, MIME type, SHA-256 and UTC recovery timestamp. These fields remain external operational metadata and do not change the VLF schema.
+
+
+### Legacy sense index metadata
+
+Legacy dictionary importers may preserve source-specific acepção ordering in the JSON payload as `sense_index` (integer). A source lexical key such as `Água$1$` is normalized to lemma `Água`, while the original marked key is retained as `source_lemma`. The marker is source metadata and is not part of the searchable lemma.
