@@ -279,7 +279,10 @@ def _legacy_definition(value):
     if isinstance(value, (list, tuple)):
         return "\n".join(filter(None, (_legacy_definition(item) for item in value)))
     if isinstance(value, dict):
-        preferred = ("definition", "definitions", "descricao", "descrição", "meaning", "meanings", "text", "html")
+        preferred = (
+            "definition", "definitions", "definicao", "definição",
+            "descricao", "descrição", "meaning", "meanings", "text", "html"
+        )
         for key in preferred:
             if key in value:
                 return _legacy_definition(value[key])
@@ -324,6 +327,13 @@ def pickle_entries(source):
     if isinstance(value, dict) and "entries" in value and isinstance(value["entries"], (list, tuple, dict)):
         value = value["entries"]
     if isinstance(value, dict):
+        # A recovered class instance becomes its attribute dictionary.
+        # Distinguish that single-entry shape from a traditional
+        # {lemma: definition} dictionary.
+        lemma_keys = ("lemma", "headword", "word", "termo", "verbete", "palavra")
+        if any(key in value for key in lemma_keys):
+            yield _legacy_entry(value)
+            return
         for lemma, record in value.items():
             yield _legacy_entry(record, lemma)
         return
