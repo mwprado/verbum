@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        44%{?dist}
+Release:        45%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,12 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-45
+- Improve Outras entradas e locuções as a compact navigable grid
+- Show only related headword titles, with count and a short interaction hint
+- Make each related entry directly searchable with one click
+- Keep embedded definitions preserved in VLF but hidden from the compact section
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-44
 - Show only headword/locution titles under Outras entradas e locuções
 - Preserve full embedded definitions in legacy_tail/raw_definition without rendering them
