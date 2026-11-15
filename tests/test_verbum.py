@@ -189,5 +189,38 @@ class VerbumTests(unittest.TestCase):
             self.assertEqual(hit["definition"], "líquido")
             self.assertEqual(hit["variants"], ["aguas", "água"])
 
+    def test_protocol0_class_pickle_uses_inert_proxy(self):
+        import gzip
+        import pickle
+        from verbum.importers import import_dictionary
+
+        class_payload = (
+            b"ccopy_reg\n_reconstructor\np0\n"
+            b"(clegacy_dictionary\nVerbete\np1\n"
+            b"c__builtin__\nobject\np2\nNtp3\nRp4\n"
+            b"(dp5\nVverbete\np6\nVágua\np7\ns"
+            b"Vdefinicao\np8\nVlíquido\np9\nsb."
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "legado.pklz"
+            source.write_bytes(gzip.compress(class_payload))
+            value = list(__import__("verbum.importers", fromlist=["pickle_entries"]).pickle_entries(source))
+            self.assertEqual(value[0]["lemma"], "água")
+
+    def test_protocol0_reconstructor_does_not_import_original_class(self):
+        import gzip
+        from verbum.importers import pickle_entries
+        payload = (
+            b"ccopy_reg\n_reconstructor\np0\n"
+            b"(cos\nsystem\np1\n"
+            b"c__builtin__\nobject\np2\nNtp3\nRp4\n"
+            b"(dp5\nVverbete\np6\nVseguro\np7\nsb."
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "proxy.pklz"
+            source.write_bytes(gzip.compress(payload))
+            rows = list(pickle_entries(source))
+            self.assertEqual(rows[0]["lemma"], "seguro")
+
 if __name__ == "__main__":
     unittest.main()
