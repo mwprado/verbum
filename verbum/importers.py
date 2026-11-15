@@ -605,8 +605,30 @@ def _legacy_record_is_empty(record, lemma=None):
     return False
 
 
+def _legacy_record_has_own_lemma(record):
+    if not isinstance(record, dict):
+        return False
+    for key in ("lema_original", "lemma", "headword", "word", "termo", "verbete", "palavra"):
+        value = record.get(key)
+        if isinstance(value, bytes):
+            value = value.decode("utf-8", errors="replace")
+        if isinstance(value, str) and value.strip():
+            return True
+    return False
+
+
 def _legacy_entry_optional(record, lemma=None):
-    """Return a lexical entry or None for a genuinely empty auxiliary record."""
+    """Return a lexical entry or None for an unusable auxiliary/orphan record."""
+    if lemma is not None:
+        raw_lemma = (
+            lemma.decode("utf-8", errors="replace")
+            if isinstance(lemma, bytes) else str(lemma)
+        )
+        if not raw_lemma.strip() and not _legacy_record_has_own_lemma(record):
+            # In keyed lexical maps (e.g. VOLP), the outer key is the
+            # authoritative headword.  A blank key with no embedded lemma is
+            # not addressable as a lexical entry and must not abort the import.
+            return None
     try:
         return _legacy_entry(record, lemma)
     except ValueError as exc:
@@ -663,6 +685,23 @@ def _pickle_metadata(source):
         ).split("-") if part
     )[:48]
     origin = "legacy-" + (origin_tail or "dictionary")
+
+    lowered = ascii_stem.casefold()
+    if "volp" in lowered and ("abl" in lowered or lowered == "volp"):
+        return {
+            "title": "VOLP",
+            "display_name": "VOLP",
+            "language": "pt-br",
+            "origin": "abl",
+            "function": "orthographic",
+            "license": "unverified",
+            "license_type": "unspecified",
+            "access": "local",
+            "source_path": str(path),
+            "source_format": "pickle-legacy",
+            "capabilities": ["orthography", "definitions"],
+        }
+
     return {
         "title": title,
         "language": "und",
