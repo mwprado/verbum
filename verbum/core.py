@@ -243,12 +243,20 @@ class Registry:
             pages = max(1, (total + page_size - 1) // page_size)
 
             seek_key = normalize(seek) if isinstance(seek, str) else ""
+            seek_entry_id = None
             if seek_key:
                 rank = db.execute(
                     "SELECT COUNT(*) FROM entries WHERE normalized < ?",
                     (seek_key,),
                 ).fetchone()[0]
                 page = min(rank // page_size, pages - 1)
+                exact = db.execute(
+                    "SELECT id FROM entries WHERE normalized = ? "
+                    "ORDER BY lemma,id LIMIT 1",
+                    (seek_key,),
+                ).fetchone()
+                if exact:
+                    seek_entry_id = exact[0]
             else:
                 page = min(page, pages - 1)
 
@@ -274,6 +282,7 @@ class Registry:
             "total": total,
             "pages": pages,
             "seek": seek_key or None,
+            "seek_entry_id": seek_entry_id,
             "hits": hits,
         }
 
