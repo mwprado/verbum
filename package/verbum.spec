@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        35%{?dist}
+Release:        36%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -92,7 +92,6 @@ from verbum_ldoce5.media import main
 raise SystemExit(main())
 EOF
 chmod 0755 %{buildroot}%{_bindir}/verbum-ldoce5-media
-%{_bindir}/verbum-ldoce5-recover
 
 cat > %{buildroot}%{_bindir}/verbum-ldoce5-recover <<'EOF'
 #!%{__python3}
@@ -123,6 +122,7 @@ update-mime-database mime-check
 %{_bindir}/verbum
 %{_bindir}/verbum-ldoce5-export
 %{_bindir}/verbum-ldoce5-media
+%{_bindir}/verbum-ldoce5-recover
 %{python3_sitelib}/verbum/
 %{python3_sitelib}/verbum_ldoce5/
 %{_datadir}/applications/%{appid}.desktop
@@ -131,6 +131,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-36
+- Fix RPM install section accidentally executing verbum-ldoce5-recover
+- Install the recovery helper only under buildroot during package assembly
+- Include verbum-ldoce5-recover in the RPM file manifest
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-35
 - Add verbum-ldoce5-recover for official LDOCE Online example-audio recovery
 - Read pending/failed exa_pron items from Verbum JSONL recovery logs
