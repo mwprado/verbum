@@ -18,7 +18,7 @@ def main(argv=None):
     imp.add_argument("source")
     imp.add_argument("--manifest")
     imp.add_argument("--rebuild", metavar="DICTIONARY", help="Rebuild an installed dictionary by slug or UUID")
-    imp.add_argument("--format", choices=["json", "jsonl", "bgl", "longman"], default="json")
+    imp.add_argument("--format", choices=["json", "jsonl", "bgl", "longman", "pickle", "pklz"], default="json")
     imp.add_argument("--authorized", action="store_true", help=argparse.SUPPRESS)  # Legacy compatibility; no attestation required.
     for name in ("list", "search", "catalog"):
         p = sub.add_parser(name)
