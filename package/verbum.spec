@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        20%{?dist}
+Release:        21%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-21
+- Reproduce original CDB first-inserted precedence for unresolved duplicate media keys
+- Prefer XML path disambiguation and identical-content deduplication first
+- Avoid false ambiguous-media failures while preserving original LDOCE5 behavior
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-20
 - Rebuild LDOCE5 media indexing from first principles
 - Preserve every physical SKN occurrence instead of collapsing duplicates
