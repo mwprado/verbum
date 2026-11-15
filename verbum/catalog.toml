@@ -13,7 +13,7 @@ access = "local"
 functions = ["general", "learner"]
 [dictionaries.distribution]
 method = "import"
-importer = "external-vlf"
+importer = "longman"
 requires_original = true
 
 [[dictionaries]]
