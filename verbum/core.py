@@ -225,6 +225,42 @@ class Registry:
                 except OSError:
                     pass
 
+    def browse(self, dictionary, page=0, page_size=100):
+        """Browse one installed dictionary without loading its full index."""
+        if not isinstance(page, int) or page < 0:
+            raise ValueError("page must be a non-negative integer")
+        if not isinstance(page_size, int) or not 1 <= page_size <= 500:
+            raise ValueError("page_size must be 1..500")
+
+        manifest, path = self.dictionary(dictionary)
+        with closing(connect_read(path)) as db:
+            total = db.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
+            pages = max(1, (total + page_size - 1) // page_size)
+            page = min(page, pages - 1)
+            rows = db.execute(
+                "SELECT id,payload FROM entries "
+                "ORDER BY normalized,lemma,id LIMIT ? OFFSET ?",
+                (page_size, page * page_size),
+            ).fetchall()
+
+        hits = [
+            {
+                "dictionary": manifest["slug"],
+                "entry_id": row[0],
+                "entry": json.loads(row[1]),
+                "match": "browse",
+            }
+            for row in rows
+        ]
+        return {
+            "dictionary": manifest["slug"],
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "pages": pages,
+            "hits": hits,
+        }
+
     def search(self, query, language=None, origin=None, function=None, limit=50, mode="smart", dictionary=None):
         if not isinstance(limit, int) or not 1 <= limit <= 1000:
             raise ValueError("limit must be 1..1000")
