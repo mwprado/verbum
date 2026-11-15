@@ -355,7 +355,7 @@ def _legacy_definition(value):
     return str(value)
 
 
-_LEGACY_HOMOGRAPH_SUFFIX = re.compile(r"(?:\\$(\\d+)\\$)+$")
+_LEGACY_HOMOGRAPH_SUFFIX = re.compile(r"(?:\$(\d+)\$)+$")
 
 
 def _clean_legacy_lemma(value):
