@@ -78,6 +78,7 @@ class _LongmanMediaLoader:
                 "(comando verbum-ldoce5-media)."
             )
         self.missing = set()
+        self.corrupt = set()
         self.process = subprocess.Popen(
             [command, str(_longman_source(source))],
             stdin=subprocess.PIPE,
@@ -102,6 +103,13 @@ class _LongmanMediaLoader:
             if detail.startswith("missing media resource:"):
                 self.missing.add((archive, name))
                 return None
+            if detail.startswith((
+                "unrecoverable media record",
+                "empty or truncated media record",
+                "invalid MPEG audio record",
+            )):
+                self.corrupt.add((archive, name))
+                return {"unavailable": True, "reason": detail}
             raise ValueError(detail + f" [recurso: {archive}/{name}]")
         return base64.b64decode(response["data"], validate=True), response["mime"]
 
@@ -435,6 +443,7 @@ def import_dictionary(registry, metadata, source, source_format="json", *, progr
                 resource_loader=loader,
             )
             result["missing_resources"] = len(loader.missing)
+            result["corrupt_resources"] = len(loader.corrupt)
             return result
         finally:
             loader.close()
