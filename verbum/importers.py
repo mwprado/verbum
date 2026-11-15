@@ -29,11 +29,11 @@ def _longman_metadata(source):
 def longman_entries(source, cancel=None):
     from .core import check_cancel
     path = _longman_source(source)
-    command = shutil.which("ldoce5-verbum-export")
+    command = shutil.which("verbum-ldoce5-export")
     if command is None:
         raise ValueError(
-            "Longman LDOCE5 requer o conversor GPL do pacote ldoce5viewer "
-            "(comando ldoce5-verbum-export)."
+            "Longman LDOCE5 requer o conversor GPL incluído no pacote Verbum "
+            "(comando verbum-ldoce5-export)."
         )
     process = subprocess.Popen(
         [command, str(path)],
@@ -107,7 +107,7 @@ def import_dictionary(registry, metadata, source, source_format="json", *, progr
 
 # Shared importer descriptions for clients. Only implemented formats are listed.
 IMPORT_FORMATS = (
-    {"id": "longman", "title": "Longman LDOCE5", "description": "Diretório original IDM/SKN (requer ldoce5-verbum-export)", "directory": True, "manifest": False},
+    {"id": "longman", "title": "Longman LDOCE5", "description": "Diretório original IDM/SKN", "directory": True, "manifest": False},
     {"id": "bgl", "title": "Babylon BGL", "description": "Arquivo original .bgl (requer PyGlossary)", "directory": False, "manifest": False},
     {"id": "json", "title": "JSON", "description": "Arquivo estruturado com manifesto TOML", "directory": False, "manifest": True},
     {"id": "jsonl", "title": "JSON Lines", "description": "Arquivo de registros JSON com manifesto TOML", "directory": False, "manifest": True},
