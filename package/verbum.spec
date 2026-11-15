@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        23%{?dist}
+Release:        24%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-24
+- Recognize recovered class-state dictionaries as single legacy entries
+- Accept definicao/definição legacy Portuguese definition fields
+- Correct protocol-0 regression fixtures for non-ASCII text
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-23
 - Recover protocol 0/1 class-based legacy Pickle files through inert proxy objects
 - Handle copyreg/copy_reg _reconstructor without importing original classes
