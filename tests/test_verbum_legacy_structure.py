@@ -30,12 +30,26 @@ class LegacyStructureTests(unittest.TestCase):
         self.assertNotIn("Água benta", entry["senses"][1]["definitions"][0])
         self.assertTrue(entry["legacy_tail"].startswith("Água benta. 1."))
         self.assertIn("1. Entrada separada.", entry["legacy_tail"])
+        self.assertEqual(entry["legacy_entries"], ["Água benta"])
 
     def test_non_sequential_numbers_are_not_guessed_as_senses(self):
         raw = "Texto histórico de 1913. 7. referência isolada."
         entry = _structure_legacy_definition({"lemma": "teste", "definition": raw})
         self.assertEqual(entry["definition"], raw)
         self.assertNotIn("senses", entry)
+
+    def test_only_embedded_headwords_are_exposed_for_display(self):
+        raw = (
+            "Substantivo feminino. 1. Principal. "
+            "Água benta. 1. Água benzida. "
+            "Água boricada. 1. Solução de ácido bórico."
+        )
+        entry = _structure_legacy_definition({"lemma": "água", "definition": raw})
+        self.assertEqual(
+            entry["legacy_entries"],
+            ["Água benta", "Água boricada"],
+        )
+        self.assertNotIn("Água benzida", entry["legacy_entries"])
 
 
 if __name__ == "__main__":
