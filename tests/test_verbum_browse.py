@@ -64,6 +64,33 @@ class DictionaryBrowseTests(unittest.TestCase):
             ["elefante"],
         )
 
+    def test_seek_repositions_to_page_near_requested_headword(self):
+        page = self.registry.browse(
+            self.imported["slug"],
+            page=0,
+            page_size=2,
+            seek="dado",
+        )
+        self.assertEqual(page["page"], 1)
+        self.assertEqual(page["seek"], "dado")
+        self.assertEqual(
+            [hit["entry"]["lemma"] for hit in page["hits"]],
+            ["casa", "dado"],
+        )
+
+    def test_seek_after_last_entry_clamps_to_last_page(self):
+        page = self.registry.browse(
+            self.imported["slug"],
+            page=0,
+            page_size=2,
+            seek="zzzz",
+        )
+        self.assertEqual(page["page"], 2)
+        self.assertEqual(
+            [hit["entry"]["lemma"] for hit in page["hits"]],
+            ["elefante"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
