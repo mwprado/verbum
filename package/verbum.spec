@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        47%{?dist}
+Release:        48%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,13 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-48
+- Treat the outer key as authoritative for keyed legacy dictionaries such as VOLP
+- Skip blank keyed records that have no embedded lexical lemma instead of aborting import
+- Preserve strict errors for non-empty unkeyed malformed records
+- Recognize dicionario-abl-volp.pklz as VOLP, pt-BR, orthographic, origin ABL
+- Add regression coverage for VOLP-style blank keys and metadata
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-47
 - Skip genuinely empty auxiliary records in legacy Pickle/PKLZ containers
 - Prevent blank VOLP index records from aborting an otherwise valid import
