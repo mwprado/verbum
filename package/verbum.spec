@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        30%{?dist}
+Release:        31%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -111,7 +111,7 @@ update-mime-database mime-check
 
 %files
 %license LICENSE LICENSES/GPL-3.0-or-later.txt
-%doc docs/VERBUM.md
+%doc docs/VERBUM.md docs/VLF.md
 %{_bindir}/verbum
 %{_bindir}/verbum-ldoce5-export
 %{_bindir}/verbum-ldoce5-media
@@ -123,6 +123,14 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-31
+- Publish the formal VLF v2 specification
+- Support original plus preferred derived media representations in VLF
+- Keep original resource bytes addressable by SHA-256 when a derivative is preferred
+- Make GTK media rendering depend on media type and MIME instead of Longman archive names
+- Support Ogg/Opus and other audio MIME suffixes during playback
+- Document text-only, image-only and mixed-media dictionary models
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-30
 - Recover complete LDOCE5 records from blocks with a bad zlib trailer
 - Never pad or accept records that extend beyond the recovered DEFLATE bytes
