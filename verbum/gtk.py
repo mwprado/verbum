@@ -456,7 +456,7 @@ class Window(Adw.ApplicationWindow):
             for index in valid:
                 ref = media[index]
                 archive = ref.get("archive")
-                if archive not in names:
+                if archive not in names or archive == "picture":
                     continue
                 used.add(index)
                 title = names[archive]
@@ -519,10 +519,79 @@ class Window(Adw.ApplicationWindow):
         elif e.get("unassigned_examples"):
             self.detail.append(label("Outros exemplos", "heading"))
             render_examples(e["unassigned_examples"], [])
+
+        pictures = [
+            i for i, ref in enumerate(media)
+            if isinstance(ref, dict) and ref.get("archive") == "picture"
+        ]
+        if pictures:
+            self.detail.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
+            self.detail.append(label("Ilustrações", "heading"))
+            gallery = Gtk.FlowBox(
+                selection_mode=Gtk.SelectionMode.NONE,
+                min_children_per_line=1,
+                max_children_per_line=3,
+                homogeneous=False,
+                row_spacing=12,
+                column_spacing=12,
+                halign=Gtk.Align.START,
+            )
+            for index in pictures:
+                used.add(index)
+                ref = media[index]
+                card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+                card.set_size_request(210, -1)
+                image_area = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+                image_area.append(label("Carregando imagem…", "dim-label"))
+                card.append(image_area)
+                if ref.get("fullsize"):
+                    full = button(
+                        "Ver imagem integral",
+                        lambda _, i=index, area=image_area: self.load_media(
+                            hit, i, True, area=area
+                        ),
+                    )
+                    full.add_css_class("flat")
+                    card.append(full)
+                gallery.insert(card, -1)
+                self.load_image_preview(hit, index, image_area)
+            self.detail.append(gallery)
+
         remaining = [i for i, ref in enumerate(media) if i not in used and isinstance(ref, dict)]
         if remaining:
             self.detail.append(label("Outros recursos", "heading"))
             controls(remaining, self.detail)
+
+    def load_image_preview(self, hit, index, area):
+        """Load an embedded dictionary illustration without disturbing audio."""
+        generation = self.detail_generation
+
+        def complete(result, error):
+            if generation != self.detail_generation:
+                return
+            clear(area)
+            if error:
+                area.append(label(str(error), "dim-label"))
+                return
+            data, mime = result
+            try:
+                if not mime.startswith("image/"):
+                    raise ValueError("O recurso não é uma imagem.")
+                texture = Gdk.Texture.new_from_bytes(GLib.Bytes.new(data))
+                picture = Gtk.Picture.new_for_paintable(texture)
+                picture.set_can_shrink(True)
+                picture.set_content_fit(Gtk.ContentFit.CONTAIN)
+                picture.set_size_request(200, 180)
+                area.append(picture)
+            except Exception as exc:
+                area.append(label(str(exc), "dim-label"))
+
+        self.work(
+            lambda: get_media(
+                self.registry, hit["dictionary"], hit["entry_id"], index, False
+            ),
+            complete,
+        )
 
     def load_media(self, hit, index, fullsize=False, *, area):
         generation = self.detail_generation
