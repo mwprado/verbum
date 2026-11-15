@@ -77,6 +77,7 @@ class _LongmanMediaLoader:
                 "O pacote Verbum não contém o leitor de mídia LDOCE5 "
                 "(comando verbum-ldoce5-media)."
             )
+        self.missing = set()
         self.process = subprocess.Popen(
             [command, str(_longman_source(source))],
             stdin=subprocess.PIPE,
@@ -98,6 +99,9 @@ class _LongmanMediaLoader:
         response = json.loads(line)
         if not response.get("ok"):
             detail = response.get("error") or "Falha ao ler recurso LDOCE5."
+            if detail.startswith("missing media resource:"):
+                self.missing.add((archive, name))
+                return None
             raise ValueError(detail + f" [recurso: {archive}/{name}]")
         return base64.b64decode(response["data"], validate=True), response["mime"]
 
@@ -409,7 +413,7 @@ def import_dictionary(registry, metadata, source, source_format="json", *, progr
             raise ValueError("Longman usa os metadados nativos do catálogo; não informe manifesto.")
         loader = _LongmanMediaLoader(source)
         try:
-            return registry.import_entries(
+            result = registry.import_entries(
                 _longman_metadata(source),
                 longman_entries(source, cancel=cancel),
                 progress=progress,
@@ -417,6 +421,8 @@ def import_dictionary(registry, metadata, source, source_format="json", *, progr
                 rebuild=rebuild,
                 resource_loader=loader,
             )
+            result["missing_resources"] = len(loader.missing)
+            return result
         finally:
             loader.close()
     if metadata is None:
