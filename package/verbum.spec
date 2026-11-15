@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        32%{?dist}
+Release:        33%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,13 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-33
+- Write unrecoverable Longman media to a private JSONL recovery queue
+- Record archive, logical resource name, failure reason and pending status
+- Return and report the recovery-log path after import
+- Keep recovery logs outside VLF for later extraction and decoder experiments
+- Document the recovery-log format and location
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-32
 - Advance IDM media catalog scans across any number of skipped compression blocks
 - Distinguish unrecoverable source media from genuinely missing resources
