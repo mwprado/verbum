@@ -177,9 +177,9 @@ class VerbumTests(unittest.TestCase):
             root = Path(tmp)
             source = root / "Dicionário_Aurélio.pklz"
             source.write_bytes(gzip.compress(pickle.dumps({
-                b"água": {
-                    b"definition": b"líquido",
-                    b"variants": (b"aguas", b"água"),
+                "água".encode("utf-8"): {
+                    b"definition": "líquido".encode("utf-8"),
+                    b"variants": (b"aguas", "água".encode("utf-8")),
                 }
             }, protocol=4)))
             result = import_dictionary(self.registry, None, source, "pickle")
@@ -198,8 +198,8 @@ class VerbumTests(unittest.TestCase):
             b"ccopy_reg\n_reconstructor\np0\n"
             b"(clegacy_dictionary\nVerbete\np1\n"
             b"c__builtin__\nobject\np2\nNtp3\nRp4\n"
-            b"(dp5\nVverbete\np6\nVágua\np7\ns"
-            b"Vdefinicao\np8\nVlíquido\np9\nsb."
+            b"(dp5\nVverbete\np6\nV\\u00e1gua\np7\ns"
+            b"Vdefinicao\np8\nVl\\u00edquido\np9\nsb."
         )
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "legado.pklz"
