@@ -1,4 +1,5 @@
 """Source-specific import adapters. No arbitrary pickle deserialization."""
+import base64
 import json
 import shutil
 import subprocess
@@ -23,7 +24,10 @@ def _longman_metadata(source):
     metadata = next(dict(m) for m in read_catalog() if m["origin"] == "longman")
     metadata["source_path"] = str(_longman_source(source))
     metadata["source_format"] = "longman"
-    metadata["capabilities"] = ["definitions", "examples", "grammar", "variants"]
+    metadata["capabilities"] = [
+        "definitions", "examples", "grammar", "variants",
+        "source-xml", "media-references", "embedded-media"
+    ]
     return metadata
 
 def longman_entries(source, cancel=None):
@@ -61,6 +65,54 @@ def longman_entries(source, cancel=None):
                 process.kill()
                 process.wait()
 
+class _LongmanMediaLoader:
+    def __init__(self, source):
+        command = shutil.which("verbum-ldoce5-media")
+        if command is None:
+            raise ValueError(
+                "O pacote Verbum não contém o leitor de mídia LDOCE5 "
+                "(comando verbum-ldoce5-media)."
+            )
+        self.process = subprocess.Popen(
+            [command, str(_longman_source(source))],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            bufsize=1,
+        )
+
+    def __call__(self, archive, name):
+        request = json.dumps({"archive": archive, "name": name}, separators=(",", ":"))
+        self.process.stdin.write(request + "\n")
+        self.process.stdin.flush()
+        line = self.process.stdout.readline()
+        if not line:
+            error = self.process.stderr.read().strip()
+            raise ValueError(error or "O leitor de mídia LDOCE5 terminou inesperadamente.")
+        response = json.loads(line)
+        if not response.get("ok"):
+            raise ValueError(response.get("error") or "Falha ao ler recurso LDOCE5.")
+        return base64.b64decode(response["data"], validate=True), response["mime"]
+
+    def close(self):
+        if self.process.poll() is None:
+            try:
+                self.process.stdin.close()
+            except OSError:
+                pass
+            try:
+                self.process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self.process.terminate()
+                try:
+                    self.process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    self.process.kill()
+                    self.process.wait()
+
+
 def json_entries(source, source_format=None):
     path = Path(source)
     with path.open(encoding="utf-8") as f:
@@ -85,13 +137,18 @@ def import_dictionary(registry, metadata, source, source_format="json", *, progr
     if source_format == "longman":
         if metadata is not None:
             raise ValueError("Longman usa os metadados nativos do catálogo; não informe manifesto.")
-        return registry.import_entries(
-            _longman_metadata(source),
-            longman_entries(source, cancel=cancel),
-            progress=progress,
-            cancel=cancel,
-            rebuild=rebuild,
-        )
+        loader = _LongmanMediaLoader(source)
+        try:
+            return registry.import_entries(
+                _longman_metadata(source),
+                longman_entries(source, cancel=cancel),
+                progress=progress,
+                cancel=cancel,
+                rebuild=rebuild,
+                resource_loader=loader,
+            )
+        finally:
+            loader.close()
     if metadata is None:
         raise ValueError("JSON/JSONL requires --manifest")
     if source_format not in ("json", "jsonl"):
