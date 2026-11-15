@@ -161,8 +161,11 @@ class Window(Adw.ApplicationWindow):
         self.forward.connect("clicked", lambda *_: self.navigate_history(1))
         header.pack_start(self.back)
         header.pack_start(self.forward)
-        self.search = Gtk.SearchEntry(placeholder_text="Pesquisar palavra…", hexpand=True,
-                                      width_chars=24)
+        self.search = Gtk.SearchEntry(
+            placeholder_text="Pesquisar palavra…",
+            hexpand=True,
+            width_chars=32,
+        )
         header.set_title_widget(self.search)
         menu = Gio.Menu()
         def add_action(name, callback):
@@ -218,77 +221,95 @@ class Window(Adw.ApplicationWindow):
         result_scroll.set_visible(False)
         right.append(result_scroll)
 
+        # One compact web-like navigation bar below the headword list.
         self.browse_controls = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL,
+            orientation=Gtk.Orientation.HORIZONTAL,
             spacing=6,
             margin_start=12,
             margin_end=12,
             margin_top=2,
-            margin_bottom=2,
+            margin_bottom=8,
+            valign=Gtk.Align.CENTER,
         )
+        self.browse_controls.add_css_class("toolbar")
 
-        alphabet_scroll = Gtk.ScrolledWindow()
-        alphabet_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER)
-        alphabet_scroll.set_propagate_natural_height(True)
-        alphabet = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=2,
-            halign=Gtk.Align.START,
+        alphabet_popover = Gtk.Popover()
+        alphabet = Gtk.FlowBox(
+            selection_mode=Gtk.SelectionMode.NONE,
+            min_children_per_line=7,
+            max_children_per_line=7,
+            homogeneous=True,
+            row_spacing=2,
+            column_spacing=2,
+            margin_start=8,
+            margin_end=8,
+            margin_top=8,
+            margin_bottom=8,
         )
         for key in ["0"] + [chr(code) for code in range(ord("A"), ord("Z") + 1)]:
             title = "0–9" if key == "0" else key
             jump = Gtk.Button(label=title)
             jump.add_css_class("flat")
-            jump.set_tooltip_text("Ir para " + title)
-            jump.connect("clicked", lambda _button, value=key: self.jump_browse(value))
-            alphabet.append(jump)
-        alphabet_scroll.set_child(alphabet)
-        self.browse_controls.append(alphabet_scroll)
+            jump.connect(
+                "clicked",
+                lambda _button, value=key: (
+                    alphabet_popover.popdown(),
+                    self.jump_browse(value),
+                ),
+            )
+            alphabet.insert(jump, -1)
+        alphabet_popover.set_child(alphabet)
 
-        goto = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=6,
-            halign=Gtk.Align.CENTER,
-        )
+        self.alphabet_button = Gtk.MenuButton(label="A–Z")
+        self.alphabet_button.add_css_class("flat")
+        self.alphabet_button.set_tooltip_text("Navegar por letra")
+        self.alphabet_button.set_popover(alphabet_popover)
+        self.browse_controls.append(self.alphabet_button)
+
         self.goto_entry = Gtk.Entry(
             placeholder_text="Ir para…",
+            width_chars=18,
             hexpand=True,
-            width_chars=22,
         )
         self.goto_entry.set_tooltip_text(
-            "Digite um verbete ou prefixo para reposicionar a lista"
+            "Ir para a página em que o verbete se encontra"
         )
         self.goto_entry.connect("activate", lambda *_: self.jump_browse())
+        self.browse_controls.append(self.goto_entry)
+
         goto_button = Gtk.Button(label="Ir")
-        goto_button.add_css_class("suggested-action")
+        goto_button.add_css_class("flat")
         goto_button.connect("clicked", lambda *_: self.jump_browse())
-        goto.append(self.goto_entry)
-        goto.append(goto_button)
-        self.browse_controls.append(goto)
+        self.browse_controls.append(goto_button)
 
-        self.browse_controls.set_visible(False)
-        right.append(self.browse_controls)
-
-        self.pager = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=8,
-            halign=Gtk.Align.CENTER,
-            margin_top=2,
-            margin_bottom=8,
+        self.page_previous = Gtk.Button(
+            icon_name="go-previous-symbolic",
+            tooltip_text="Página anterior",
         )
-        self.page_previous = Gtk.Button(label="Anterior")
         self.page_previous.add_css_class("flat")
-        self.page_previous.connect("clicked", lambda *_: self.change_browse_page(-1))
+        self.page_previous.connect(
+            "clicked", lambda *_: self.change_browse_page(-1)
+        )
+        self.browse_controls.append(self.page_previous)
+
         self.page_label = Gtk.Label(label="")
         self.page_label.add_css_class("dim-label")
-        self.page_next = Gtk.Button(label="Próxima")
+        self.page_label.set_selectable(False)
+        self.browse_controls.append(self.page_label)
+
+        self.page_next = Gtk.Button(
+            icon_name="go-next-symbolic",
+            tooltip_text="Próxima página",
+        )
         self.page_next.add_css_class("flat")
-        self.page_next.connect("clicked", lambda *_: self.change_browse_page(1))
-        self.pager.append(self.page_previous)
-        self.pager.append(self.page_label)
-        self.pager.append(self.page_next)
-        self.pager.set_visible(False)
-        right.append(self.pager)
+        self.page_next.connect(
+            "clicked", lambda *_: self.change_browse_page(1)
+        )
+        self.browse_controls.append(self.page_next)
+
+        self.browse_controls.set_visible(False)
+        self.pager = self.browse_controls
+        right.append(self.browse_controls)
 
         self.detail = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12,
                               margin_start=24, margin_end=24, margin_top=24, margin_bottom=32)
@@ -598,27 +619,33 @@ class Window(Adw.ApplicationWindow):
                 clear(self.results)
                 self.result_scroll.set_visible(False)
                 self.browse_controls.set_visible(False)
-                self.pager.set_visible(False)
                 self.status.set_text(str(error))
                 return
 
             self.browse_page = result["page"]
             self.browse_pages = result["pages"]
-            self.browse_seek = None
             hits = result["hits"]
+            seek_entry_id = result.get("seek_entry_id")
+            self.browse_seek = None
             self.render_hits(hits, auto_select=False)
+
+            if seek_entry_id is not None:
+                for index, hit in enumerate(hits):
+                    if hit["entry_id"] == seek_entry_id:
+                        child = self.results.get_child_at_index(index)
+                        if child is not None:
+                            self.results.select_child(child)
+                        break
 
             page_number = self.browse_page + 1
             self.page_label.set_text(
-                f"Página {page_number} de {self.browse_pages} · "
-                f"{result['total']:,} verbetes".replace(",", ".")
+                f"{page_number} / {self.browse_pages}"
             )
             self.page_previous.set_sensitive(self.browse_page > 0)
             self.page_next.set_sensitive(
                 self.browse_page + 1 < self.browse_pages
             )
             self.browse_controls.set_visible(bool(result["total"]))
-            self.pager.set_visible(bool(result["total"]))
             self.status.set_text(
                 f"{result['total']:,} verbetes no dicionário."
                 .replace(",", ".")
@@ -654,13 +681,11 @@ class Window(Adw.ApplicationWindow):
             clear(self.results)
             self.result_scroll.set_visible(False)
             self.browse_controls.set_visible(False)
-            self.pager.set_visible(False)
             self.show_empty()
             self.status.set_text("Digite uma palavra ou selecione um dicionário.")
             return GLib.SOURCE_REMOVE
 
         self.browse_controls.set_visible(False)
-        self.pager.set_visible(False)
         self.status.set_text("Pesquisando…")
 
         def find():
@@ -732,14 +757,12 @@ class Window(Adw.ApplicationWindow):
         )
         source_name, edition_title = dictionary_identity(manifest)
         if source_name:
-            source_label = label(source_name, "dim-label")
+            source_label = label(source_name, "caption")
+            source_label.add_css_class("dim-label")
             source_label.set_selectable(False)
+            if edition_title:
+                source_label.set_tooltip_text(edition_title)
             self.detail.append(source_label)
-        if edition_title:
-            edition_label = label(edition_title, "caption")
-            edition_label.add_css_class("dim-label")
-            edition_label.set_selectable(False)
-            self.detail.append(edition_label)
 
         grammar = e.get("grammar", {})
         if isinstance(grammar, dict):
