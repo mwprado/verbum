@@ -89,7 +89,7 @@ def _write_unrecoverable_log(registry, source, result, corrupt):
         "version": 1,
         "created_at": created.isoformat(),
         "source_format": "longman",
-        "source_path": str(_longman_source(source)),
+        "source_path": str(Path(source).expanduser().resolve()),
         "dictionary_slug": result.get("slug"),
         "vlf_path": result.get("path"),
         "count": len(corrupt),
