@@ -47,6 +47,32 @@ def values(value):
         return [v for v in value if isinstance(v, str)]
     return []
 
+
+SOURCE_NAMES = {
+    "aurelio": "Aurélio",
+    "longman": "LDOCE",
+    "michaelis": "Michaelis",
+    "houaiss": "Houaiss",
+    "abl": "VOLP",
+    "wiktionary": "Wiktionary",
+}
+
+
+def dictionary_identity(manifest):
+    """Return compact source name and optional edition title for display."""
+    if not isinstance(manifest, dict):
+        return "", ""
+    source = manifest.get("display_name")
+    if not isinstance(source, str) or not source.strip():
+        source = SOURCE_NAMES.get(manifest.get("origin"), manifest.get("title", ""))
+    source = str(source).strip()
+
+    title = manifest.get("edition_title") or manifest.get("title") or ""
+    title = str(title).strip()
+    if title.casefold() == source.casefold():
+        title = ""
+    return source, title
+
 class Window(Adw.ApplicationWindow):
     def __init__(self, app, registry):
         super().__init__(application=app, title="Verbum", default_width=1100, default_height=740)
@@ -250,8 +276,16 @@ class Window(Adw.ApplicationWindow):
             box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8,
                           margin_start=12, margin_end=12, margin_top=8, margin_bottom=8)
             box.append(Gtk.Image.new_from_icon_name("x-office-address-book-symbolic" if m else "view-list-symbolic"))
-            title = Gtk.Label(label=m["title"] if m else "Todos", xalign=0, ellipsize=Pango.EllipsizeMode.END)
+            if m:
+                source_name, edition_title = dictionary_identity(m)
+                title_text = source_name or m["title"]
+            else:
+                source_name, edition_title = "Todos", ""
+                title_text = "Todos"
+            title = Gtk.Label(label=title_text, xalign=0, ellipsize=Pango.EllipsizeMode.END)
             box.append(title)
+            if m:
+                row.set_tooltip_text(edition_title or m["title"])
             row.set_child(box)
             self.dictionary.append(row)
             if row.slug == preferred:
@@ -490,7 +524,22 @@ class Window(Adw.ApplicationWindow):
             marker.set_margin_top(2)
             head.append(marker)
         self.detail.append(head)
-        self.detail.append(label(next((m["title"] for m in self.manifests if m["slug"] == hit["dictionary"]), hit["dictionary"]), "dim-label"))
+
+        manifest = next(
+            (m for m in self.manifests if m["slug"] == hit["dictionary"]),
+            None,
+        )
+        source_name, edition_title = dictionary_identity(manifest)
+        if source_name:
+            source_label = label(source_name, "dim-label")
+            source_label.set_selectable(False)
+            self.detail.append(source_label)
+        if edition_title:
+            edition_label = label(edition_title, "caption")
+            edition_label.add_css_class("dim-label")
+            edition_label.set_selectable(False)
+            self.detail.append(edition_label)
+
         grammar = e.get("grammar", {})
         if isinstance(grammar, dict):
             parts = values(grammar.get("pos")) + values(grammar.get("notes"))
