@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        11%{?dist}
+Release:        12%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -86,6 +86,13 @@ raise SystemExit(main())
 EOF
 chmod 0755 %{buildroot}%{_bindir}/verbum-ldoce5-export
 
+cat > %{buildroot}%{_bindir}/verbum-ldoce5-media <<'EOF'
+#!%{__python3}
+from verbum_ldoce5.media import main
+raise SystemExit(main())
+EOF
+chmod 0755 %{buildroot}%{_bindir}/verbum-ldoce5-media
+
 desktop-file-install --dir=%{buildroot}%{_datadir}/applications data/%{appid}.desktop
 install -Dm0644 data/%{appid}.svg %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/%{appid}.svg
 install -Dm0644 data/%{appid}.xml %{buildroot}%{_datadir}/mime/packages/%{appid}.xml
@@ -94,7 +101,7 @@ install -Dm0644 data/%{appid}.metainfo.xml %{buildroot}%{_datadir}/metainfo/%{ap
 %check
 %{__python3} -m unittest discover -s tests -p 'test_verbum*.py' -v
 %{__python3} -c 'from verbum.gtk import Application; from verbum import resources'
-%{__python3} -c 'from verbum_ldoce5.export import validate_source; from verbum_ldoce5 import idmreader'
+%{__python3} -c 'from verbum_ldoce5.export import validate_source; from verbum_ldoce5 import idmreader; from verbum_ldoce5.media import read_media'
 desktop-file-validate %{buildroot}%{_datadir}/applications/%{appid}.desktop
 appstream-util validate-relax --nonet %{buildroot}%{_datadir}/metainfo/%{appid}.metainfo.xml
 # Test MIME compilation outside the buildroot.
@@ -107,6 +114,7 @@ update-mime-database mime-check
 %doc docs/VERBUM.md
 %{_bindir}/verbum
 %{_bindir}/verbum-ldoce5-export
+%{_bindir}/verbum-ldoce5-media
 %{python3_sitelib}/verbum/
 %{python3_sitelib}/verbum_ldoce5/
 %{_datadir}/applications/%{appid}.desktop
@@ -115,6 +123,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-12
+- Restore complete LDOCE5 media extraction
+- Embed pronunciation audio, example audio and images in VLF during import
+- Add persistent verbum-ldoce5-media helper for efficient resource streaming
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-11
 - Fix bundled LDOCE5 converter installation paths
 - Package verbum-ldoce5-export and verbum_ldoce5 modules
