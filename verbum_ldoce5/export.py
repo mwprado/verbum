@@ -62,6 +62,8 @@ def _texts(nodes):
 
 
 def parse_entry(data, source_name):
+    import base64
+
     parser = etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False)
     root = etree.fromstring(data, parser)
     head = root.find("Head")
@@ -69,6 +71,35 @@ def parse_entry(data, source_name):
     source_id = root.get("id")
     if head is None or not lemma or not source_id:
         raise ValueError("missing Longman headword or ID")
+
+    audio_indices = {}
+    media = []
+    for node in root.iter("Audio"):
+        resource, topic = node.get("resource"), node.get("topic")
+        if resource and topic:
+            audio_indices[node] = len(media)
+            media.append({
+                "type": "audio",
+                "archive": resource.lower(),
+                "name": topic.split("/")[-1],
+            })
+
+    def example_detail(node):
+        text = _text(node.find("BASE") if node.find("BASE") is not None else node)
+        return {
+            "text": text,
+            "audio_indices": [
+                audio_indices[a] for a in node.iter("Audio") if a in audio_indices
+            ],
+        }
+
+    pronunciations = [
+        audio_indices[a]
+        for a in head.iter("Audio")
+        if a in audio_indices
+        and media[audio_indices[a]]["archive"] in ("gb_hwd_pron", "us_hwd_pron")
+        and not any(parent.tag == "EXAMPLE" for parent in a.iterancestors())
+    ]
 
     senses = []
     for node in root.xpath(".//Sense | .//Subsense"):
@@ -87,18 +118,27 @@ def parse_entry(data, source_name):
                 is node
             ]
 
-        senses.append(
-            {
-                "id": node.get("id"),
-                "definitions": _texts(owned("DEF")),
-                "examples": _texts(
-                    example.find("BASE")
-                    if example.find("BASE") is not None
-                    else example
-                    for example in owned("EXAMPLE")
-                ),
-            }
-        )
+        examples = owned("EXAMPLE")
+        senses.append({
+            "id": node.get("id"),
+            "definitions": _texts(owned("DEF")),
+            "examples": _texts(
+                example.find("BASE") if example.find("BASE") is not None else example
+                for example in examples
+            ),
+            "example_details": [example_detail(example) for example in examples],
+        })
+
+    for node in root.iter("ILLUSTRATION"):
+        thumb = node.get("thumb")
+        if thumb:
+            leaf = thumb.split("/")[-1]
+            media.append({
+                "type": "image",
+                "archive": "picture",
+                "name": "thumbnail/" + leaf,
+                "fullsize": "fullsize/" + leaf,
+            })
 
     return {
         "lemma": lemma,
@@ -113,14 +153,26 @@ def parse_entry(data, source_name):
         "senses": senses,
         "definitions": _texts(root.iter("DEF")),
         "examples": _texts(
-            example.find("BASE")
-            if example.find("BASE") is not None
-            else example
+            example.find("BASE") if example.find("BASE") is not None else example
             for example in root.iter("EXAMPLE")
         ),
-        "source": {"archive": "fs", "file": source_name},
+        "media": media,
+        "pronunciation_indices": pronunciations,
+        "example_details": [example_detail(example) for example in root.iter("EXAMPLE")],
+        "unassigned_examples": [
+            example_detail(example)
+            for example in root.iter("EXAMPLE")
+            if not any(
+                ancestor.tag in ("Sense", "Subsense")
+                for ancestor in example.iterancestors()
+            )
+        ],
+        "source": {
+            "archive": "fs",
+            "file": source_name,
+            "xml_base64": base64.b64encode(data).decode("ascii"),
+        },
     }
-
 
 def entries(source):
     path = validate_source(source)
