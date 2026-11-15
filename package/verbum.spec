@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        41%{?dist}
+Release:        42%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-42
+- Fix exact offset when separating embedded legacy headwords after sense numbering resets
+- Preserve the complete next headword text without dropping its first character
+- Strengthen regression coverage for legacy-tail preservation
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-41
 - Organize flattened legacy dictionary entries into conservative lexical structure
 - Preserve raw_definition while extracting etymology, grammar and sequential senses
