@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        38%{?dist}
+Release:        39%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,13 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-39
+- Correct Aurélio legacy $N$ semantics: marker identifies numbered homograph/entry
+- Keep sense numbering distinct from homograph numbering
+- Preserve the marker as homograph and the original marked key as source_lemma
+- Recover homograph index from matching marked fields even with unmarked lema_original
+- Supersede the temporary sense_index interpretation from release 38
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-38
 - Interpret legacy Aurélio $N$ suffixes as acepção indices instead of homographs
 - Preserve the numeric marker as sense_index and the marked key as source_lemma
