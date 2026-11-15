@@ -596,11 +596,32 @@ class Window(Adw.ApplicationWindow):
             self.detail.append(label("Outros exemplos", "heading"))
             render_examples(e["unassigned_examples"], [])
 
-        legacy_tail = e.get("legacy_tail")
-        if isinstance(legacy_tail, str) and legacy_tail.strip():
+        legacy_entries = e.get("legacy_entries")
+        if isinstance(legacy_entries, list):
+            legacy_entries = [
+                text.strip() for text in legacy_entries
+                if isinstance(text, str) and text.strip()
+            ]
+        else:
+            legacy_entries = []
+        if legacy_entries:
             self.detail.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
             self.detail.append(label("Outras entradas e locuções", "heading"))
-            self.detail.append(label(legacy_tail, "dim-label"))
+            flow = Gtk.FlowBox(
+                selection_mode=Gtk.SelectionMode.NONE,
+                min_children_per_line=1,
+                max_children_per_line=4,
+                homogeneous=False,
+                row_spacing=4,
+                column_spacing=14,
+                halign=Gtk.Align.START,
+            )
+            for text in legacy_entries:
+                item = label(text)
+                item.set_selectable(True)
+                item.set_margin_end(8)
+                flow.insert(item, -1)
+            self.detail.append(flow)
 
         etymology = e.get("etymology")
         if isinstance(etymology, str) and etymology.strip():
