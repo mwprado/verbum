@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        8%{?dist}
+Release:        9%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT
@@ -100,6 +100,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-9
+- Add Longman LDOCE5 import through the external GPL converter
+- Expose Longman in the GTK import dialog and CLI
+- Keep proprietary dictionary data local and unmodified
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-8
 - Remove hard spec error for EPEL chroots
 - Require PyGlossary 5.x on Fedora builds only
