@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        29%{?dist}
+Release:        30%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,12 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-30
+- Recover complete LDOCE5 records from blocks with a bad zlib trailer
+- Never pad or accept records that extend beyond the recovered DEFLATE bytes
+- Validate extracted MP3 resources using consecutive MPEG Layer III frames
+- Preserve SHA-256 content addressing when media is embedded into VLF
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-29
 - Keep error dialogs visually clean with a short user-facing message
 - Move technical diagnostics into an expandable Mais informações section
