@@ -509,19 +509,17 @@ class Window(Adw.ApplicationWindow):
                                homogeneous=False, row_spacing=4, column_spacing=4, halign=Gtk.Align.START)
             area = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
             names = {"gb_hwd_pron":"Britânico", "us_hwd_pron":"Americano",
-                     "exa_pron":"Ouvir exemplo", "sfx":"Ouvir som", "sound":"Ouvir áudio",
-                     "picture":"Ver imagem"}
+                     "exa_pron":"Ouvir exemplo", "sfx":"Ouvir som", "sound":"Ouvir áudio"}
             for index in valid:
                 ref = media[index]
-                archive = ref.get("archive")
-                if archive not in names or archive == "picture":
+                if ref.get("type") != "audio":
                     continue
+                archive = ref.get("archive")
                 used.add(index)
-                title = names[archive]
+                title = names.get(archive, "Ouvir áudio")
                 control = Gtk.Button(tooltip_text=title)
                 content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-                content.append(Gtk.Image.new_from_icon_name("image-x-generic-symbolic" if archive == "picture"
-                                                            else "audio-volume-high-symbolic"))
+                content.append(Gtk.Image.new_from_icon_name("audio-volume-high-symbolic"))
                 if not compact:
                     content.append(Gtk.Label(label=title))
                 control.set_child(content)
@@ -580,7 +578,7 @@ class Window(Adw.ApplicationWindow):
 
         pictures = [
             i for i, ref in enumerate(media)
-            if isinstance(ref, dict) and ref.get("archive") == "picture"
+            if isinstance(ref, dict) and ref.get("type") == "image"
         ]
         if pictures:
             self.detail.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
@@ -671,7 +669,19 @@ class Window(Adw.ApplicationWindow):
             data, mime = result
             try:
                 if mime.startswith("audio/"):
-                    with tempfile.NamedTemporaryFile(dir=self.temp.name, suffix=".mp3", delete=False) as out:
+                    suffixes = {
+                        "audio/mpeg": ".mp3",
+                        "audio/ogg": ".ogg",
+                        "audio/opus": ".opus",
+                        "audio/flac": ".flac",
+                        "audio/wav": ".wav",
+                        "audio/x-wav": ".wav",
+                    }
+                    with tempfile.NamedTemporaryFile(
+                        dir=self.temp.name,
+                        suffix=suffixes.get(mime, ".audio"),
+                        delete=False,
+                    ) as out:
                         out.write(data)
                         self.audio_path = Path(out.name)
                     self.audio = Gtk.MediaFile.new_for_filename(str(self.audio_path))
