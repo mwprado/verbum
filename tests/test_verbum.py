@@ -169,5 +169,25 @@ class VerbumTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 list(pickle_entries(source))
 
+    def test_pickle_import_normalizes_bytes_tuples_and_accented_filename(self):
+        import gzip
+        import pickle
+        from verbum.importers import import_dictionary
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "Dicionário_Aurélio.pklz"
+            source.write_bytes(gzip.compress(pickle.dumps({
+                b"água": {
+                    b"definition": b"líquido",
+                    b"variants": (b"aguas", b"água"),
+                }
+            }, protocol=4)))
+            result = import_dictionary(self.registry, None, source, "pickle")
+            self.assertEqual(result["entries"], 1)
+            self.assertRegex(result["origin"], r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+            hit = self.registry.search("água", mode="exact")[0]["entry"]
+            self.assertEqual(hit["definition"], "líquido")
+            self.assertEqual(hit["variants"], ["aguas", "água"])
+
 if __name__ == "__main__":
     unittest.main()
