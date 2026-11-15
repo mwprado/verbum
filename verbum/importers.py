@@ -6,6 +6,7 @@ import json
 import pickle
 import shutil
 import subprocess
+import unicodedata
 from pathlib import Path
 
 
@@ -166,6 +167,26 @@ def _load_legacy_pickle(source):
     return value
 
 
+def _json_safe_legacy(value):
+    """Convert an already validated pickle tree into JSON-safe primitives."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    if isinstance(value, (list, tuple)):
+        return [_json_safe_legacy(item) for item in value]
+    if isinstance(value, dict):
+        result = {}
+        for key, item in value.items():
+            if isinstance(key, bytes):
+                key = key.decode("utf-8", errors="replace")
+            elif not isinstance(key, str):
+                key = str(key)
+            result[key] = _json_safe_legacy(item)
+        return result
+    raise ValueError("Valor legado não pode ser convertido para JSON: " + type(value).__name__)
+
+
 def _legacy_definition(value):
     if value is None:
         return ""
@@ -191,7 +212,7 @@ def _legacy_definition(value):
 
 def _legacy_entry(record, lemma=None):
     if isinstance(record, dict):
-        entry = dict(record)
+        entry = _json_safe_legacy(record)
         candidate = entry.get("lemma") or entry.get("headword") or entry.get("word") or entry.get("termo") or lemma
         if candidate is None:
             raise ValueError("Registro Pickle sem lema.")
@@ -211,7 +232,7 @@ def _legacy_entry(record, lemma=None):
         raise ValueError("Estrutura Pickle não contém lema identificável.")
     if isinstance(lemma, bytes):
         lemma = lemma.decode("utf-8", errors="replace")
-    return {"lemma": str(lemma).strip(), "definition": _legacy_definition(record)}
+    return {"lemma": str(lemma).strip(), "definition": _legacy_definition(_json_safe_legacy(record))}
 
 
 def pickle_entries(source):
@@ -237,10 +258,17 @@ def _pickle_metadata(source):
             stem = stem[:-len(suffix)]
             break
     title = stem.replace("_", " ").replace("-", " ").strip() or "Dicionário legado"
+    ascii_stem = unicodedata.normalize("NFKD", stem).encode("ascii", "ignore").decode("ascii")
+    origin_tail = "-".join(
+        part for part in "".join(
+            ch.lower() if ch.isalnum() else "-" for ch in ascii_stem
+        ).split("-") if part
+    )[:48]
+    origin = "legacy-" + (origin_tail or "dictionary")
     return {
         "title": title,
         "language": "und",
-        "origin": "legacy-" + "".join(ch.lower() if ch.isalnum() else "-" for ch in stem).strip("-")[:48],
+        "origin": origin,
         "function": "general",
         "license": "unverified",
         "license_type": "unspecified",
