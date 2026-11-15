@@ -109,20 +109,34 @@ def embed_resources(db, payload, loader, cache, cancel=None):
             if loaded is None:
                 cache[key] = None
                 return None
+            if isinstance(loaded, dict) and loaded.get("unavailable"):
+                cache[key] = {
+                    "unavailable": True,
+                    "reason": str(loaded.get("reason") or "unrecoverable source resource"),
+                }
+                return cache[key]
             cache[key] = _embed_loaded_resource(db, loaded, name)
         return cache[key]
 
     for original in payload.get("media", []):
         ref = dict(original)
         embedded = embed(ref["archive"], ref["name"])
-        if embedded:
+        if embedded and embedded.get("unavailable"):
+            ref["corrupt"] = True
+            ref["corrupt_reason"] = embedded.get("reason", "unrecoverable source resource")
+        elif embedded:
             ref.update(embedded)
         else:
             ref["missing"] = True
 
         if ref.get("fullsize"):
             fullsize = embed(ref["archive"], ref["fullsize"])
-            if fullsize:
+            if fullsize and fullsize.get("unavailable"):
+                ref["fullsize_corrupt"] = True
+                ref["fullsize_corrupt_reason"] = fullsize.get(
+                    "reason", "unrecoverable source resource"
+                )
+            elif fullsize:
                 ref["fullsize_sha256"] = fullsize["sha256"]
                 ref["fullsize_mime"] = fullsize["mime"]
                 if fullsize.get("representations"):
@@ -150,6 +164,11 @@ def get_embedded_media(registry, dictionary, entry_id, index, fullsize=False):
         missing_key = "fullsize_missing" if fullsize else "missing"
         if ref.get(missing_key):
             raise ValueError("Recurso ausente na fonte original do dicionário.")
+        corrupt_key = "fullsize_corrupt" if fullsize else "corrupt"
+        if ref.get(corrupt_key):
+            reason_key = "fullsize_corrupt_reason" if fullsize else "corrupt_reason"
+            reason = ref.get(reason_key) or "recurso irrecuperável na fonte original"
+            raise ValueError("Recurso corrompido na fonte original: " + str(reason))
         digest = ref.get("fullsize_sha256" if fullsize else "sha256")
         if not digest:
             raise ValueError("Recurso não incorporado; converta a base original para VLF v2.")
