@@ -465,7 +465,7 @@ The first JSON object describes the import. Subsequent objects describe individu
 Example:
 
 ~~~json
-{"record_type":"resource","archive":"exa_pron","name":"p008_000/example.mp3","reason":"unrecoverable media record","status":"pending"}
+{"record_type":"resource","archive":"exa_pron","name":"p008_000/example.mp3","media_type":"audio","extension":".mp3","reason":"unrecoverable media record","status":"pending"}
 ~~~
 
 These logs are intentionally external to VLF because they are a maintenance and recovery work queue. They can later be consumed by diagnostic extractors, alternative decoders, transcoding experiments or repair tools without altering the published dictionary database.
