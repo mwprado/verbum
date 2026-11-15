@@ -96,7 +96,8 @@ class _LongmanMediaLoader:
             raise ValueError(error or "O leitor de mídia LDOCE5 terminou inesperadamente.")
         response = json.loads(line)
         if not response.get("ok"):
-            raise ValueError(response.get("error") or "Falha ao ler recurso LDOCE5.")
+            detail = response.get("error") or "Falha ao ler recurso LDOCE5."
+            raise ValueError(detail + f" [recurso: {archive}/{name}]")
         return base64.b64decode(response["data"], validate=True), response["mime"]
 
     def close(self):
