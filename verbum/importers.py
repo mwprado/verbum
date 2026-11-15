@@ -413,7 +413,6 @@ def _legacy_entry(record, lemma=None):
             entry.setdefault("source_lemma", source_lemma)
         if homograph is not None:
             entry.setdefault("homograph", homograph)
-        entry.pop("homograph", None)
         entry["lemma"] = candidate
         if not any(key in entry for key in ("definition", "definitions", "senses")):
             payload = {k: v for k, v in entry.items() if k != "lemma"}
