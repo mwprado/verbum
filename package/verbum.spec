@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        27%{?dist}
+Release:        28%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-28
+- Make GUI error details selectable
+- Add one-click Copy error action to clipboard
+- Use copyable error dialogs for import, removal and open failures
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-27
 - Fix legacy PKLZ top-level lemma-map detection
 - Do not collapse dictionaries containing lemmas named palavra, verbete or termo
