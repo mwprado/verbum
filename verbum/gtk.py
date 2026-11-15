@@ -905,7 +905,11 @@ class Window(Adw.ApplicationWindow):
                     self.generation += 1
                     clear(self.results)
                     self.populate_preferences()
-                self.toast_overlay.add_toast(Adw.Toast.new(f'Dicionário {"reconstruído" if rebuild else "importado"}: {result["entries"]:n} verbetes'))
+                message = f'Dicionário {"reconstruído" if rebuild else "importado"}: {result["entries"]:n} verbetes'
+                missing = result.get("missing_resources", 0)
+                if missing:
+                    message += f" · {missing:n} recurso(s) ausente(s) na fonte"
+                self.toast_overlay.add_toast(Adw.Toast.new(message))
         def report(stage, count, total):
             # Immutable snapshot; the GTK main thread alone updates widgets.
             self.import_stage = (stage, count, total)
