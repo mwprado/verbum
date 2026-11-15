@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        10%{?dist}
+Release:        11%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -18,6 +18,7 @@ BuildRequires:  python3-devel
 BuildRequires:  python3-gobject
 BuildRequires:  gobject-introspection
 BuildRequires:  python3-cairo
+BuildRequires:  python3-lxml
 BuildRequires:  gtk4
 BuildRequires:  libadwaita
 BuildRequires:  desktop-file-utils
@@ -66,7 +67,6 @@ Dictionary contents are not distributed with this package.
 %install
 install -d %{buildroot}%{python3_sitelib}/verbum
 install -pm0644 verbum/*.py verbum/catalog.toml %{buildroot}%{python3_sitelib}/verbum/
-%{python3_sitelib}/verbum_ldoce5/
 
 install -d %{buildroot}%{python3_sitelib}/verbum_ldoce5
 install -pm0644 verbum_ldoce5/*.py %{buildroot}%{python3_sitelib}/verbum_ldoce5/
@@ -78,7 +78,6 @@ from verbum.__main__ import main
 raise SystemExit(main())
 EOF
 chmod 0755 %{buildroot}%{_bindir}/verbum
-%{_bindir}/verbum-ldoce5-export
 
 cat > %{buildroot}%{_bindir}/verbum-ldoce5-export <<'EOF'
 #!%{__python3}
@@ -107,13 +106,20 @@ update-mime-database mime-check
 %license LICENSE LICENSES/GPL-3.0-or-later.txt
 %doc docs/VERBUM.md
 %{_bindir}/verbum
+%{_bindir}/verbum-ldoce5-export
 %{python3_sitelib}/verbum/
+%{python3_sitelib}/verbum_ldoce5/
 %{_datadir}/applications/%{appid}.desktop
 %{_datadir}/icons/hicolor/scalable/apps/%{appid}.svg
 %{_datadir}/mime/packages/%{appid}.xml
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-11
+- Fix bundled LDOCE5 converter installation paths
+- Package verbum-ldoce5-export and verbum_ldoce5 modules
+- Add python3-lxml as a build dependency for converter smoke tests
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-10
 - Bundle the GPL LDOCE5 IDM/SKN converter inside the Verbum source and RPM
 - Keep the converter as a separate subprocess component from the MIT application
