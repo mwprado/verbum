@@ -85,6 +85,13 @@ class Ldoce5MediaIndexTests(unittest.TestCase):
         self.assertGreaterEqual(len(recovered), 11076)
         self.assertEqual(recovered[:11076], b"A" * 11076)
 
+    def test_block_scan_advances_over_multiple_catalog_blocks(self):
+        # Regression target is implemented in list_files: a file offset may jump
+        # across more than one empty/unreferenced block.
+        self.assertIn("while ci != len(origoffsets) - 1", __import__(
+            "inspect"
+        ).getsource(idmreader.list_files))
+
     def test_bad_zlib_trailer_does_not_accept_missing_requested_bytes(self):
         payload = b"A" * 100
         compressed = bytearray(zlib.compress(payload))
