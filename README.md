@@ -25,3 +25,8 @@ BGL import uses separately licensed PyGlossary 5.x on supported Fedora builds. J
 VLF can preserve original media and optional derived representations. For example, a future importer may preserve source MP3 bytes while preferring an Ogg/Opus derivative for playback. Conversion does not alter the licensing of the source content.
 
 MIT license applies to the original Verbum code, not dictionary data or third-party dependencies. Review source/content licensing before redistribution.
+
+
+### Recovering damaged LDOCE5 example audio
+
+`verbum-ldoce5-recover` can retry unrecoverable `exa_pron` MP3 resources against the official LDOCE Online media endpoint. Recovered files are validated and stored privately under Verbum's recovery directory; original dictionary files and VLF databases are not modified.
