@@ -7,6 +7,7 @@ import pickle
 import shutil
 import subprocess
 import unicodedata
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -354,21 +355,46 @@ def _legacy_definition(value):
     return str(value)
 
 
+_LEGACY_HOMOGRAPH_SUFFIX = re.compile(r"(?:\\$(\\d+)\\$)+$")
+
+
+def _clean_legacy_lemma(value):
+    """Remove legacy homograph markers such as $1$ from the display/search lemma.
+
+    The raw source lemma is preserved by _legacy_entry whenever normalization
+    changes it, so no source identity is lost.
+    """
+    if isinstance(value, bytes):
+        value = value.decode("utf-8", errors="replace")
+    text = str(value).strip()
+    match = _LEGACY_HOMOGRAPH_SUFFIX.search(text)
+    if not match:
+        return text, None
+    clean = text[:match.start()].rstrip()
+    if not clean:
+        return text, None
+    return clean, int(match.group(1))
+
+
 def _legacy_entry(record, lemma=None):
     if isinstance(record, dict):
         entry = _json_safe_legacy(record)
         candidate = (
-            entry.get("lemma") or entry.get("headword") or entry.get("word")
+            entry.get("lema_original")
+            or entry.get("lemma") or entry.get("headword") or entry.get("word")
             or entry.get("termo") or entry.get("verbete") or entry.get("palavra")
-            or entry.get("lema_original") or lemma
+            or lemma
         )
         if candidate is None:
             raise ValueError("Registro Pickle sem lema.")
-        if isinstance(candidate, bytes):
-            candidate = candidate.decode("utf-8", errors="replace")
-        candidate = str(candidate).strip()
+        raw_candidate = candidate.decode("utf-8", errors="replace") if isinstance(candidate, bytes) else str(candidate)
+        candidate, homograph = _clean_legacy_lemma(raw_candidate)
         if not candidate:
             raise ValueError("Registro Pickle com lema vazio.")
+        if candidate != raw_candidate.strip():
+            entry.setdefault("source_lemma", raw_candidate.strip())
+            if homograph is not None:
+                entry.setdefault("homograph", homograph)
         entry["lemma"] = candidate
         if not any(key in entry for key in ("definition", "definitions", "senses")):
             payload = {k: v for k, v in entry.items() if k != "lemma"}
@@ -378,9 +404,17 @@ def _legacy_entry(record, lemma=None):
         lemma, record = record[0], record[1:] if len(record) > 2 else record[1]
     if lemma is None:
         raise ValueError("Estrutura Pickle não contém lema identificável.")
-    if isinstance(lemma, bytes):
-        lemma = lemma.decode("utf-8", errors="replace")
-    return {"lemma": str(lemma).strip(), "definition": _legacy_definition(_json_safe_legacy(record))}
+    raw_lemma = lemma.decode("utf-8", errors="replace") if isinstance(lemma, bytes) else str(lemma)
+    clean_lemma, homograph = _clean_legacy_lemma(raw_lemma)
+    result = {
+        "lemma": clean_lemma,
+        "definition": _legacy_definition(_json_safe_legacy(record)),
+    }
+    if clean_lemma != raw_lemma.strip():
+        result["source_lemma"] = raw_lemma.strip()
+        if homograph is not None:
+            result["homograph"] = homograph
+    return result
 
 
 def _looks_like_legacy_entry(value):
