@@ -83,6 +83,8 @@ class MissingResourceTests(unittest.TestCase):
             self.assertEqual(records[0]["source_path"], str(source.resolve()))
             self.assertEqual(records[1]["record_type"], "resource")
             self.assertEqual(records[1]["status"], "pending")
+            self.assertIn(records[1]["media_type"], ("audio", "image"))
+            self.assertTrue(records[1]["extension"] in (".mp3", ".jpg"))
             self.assertEqual(
                 {(r["archive"], r["name"]) for r in records[1:]},
                 {
