@@ -31,6 +31,24 @@ CREATE TABLE IF NOT EXISTS dictionaries (
 def normalize(text):
     return unicodedata.normalize("NFC", text).casefold().strip()
 
+
+def lexical_index(text):
+    """Return # or A..Z for dictionary index tabs, otherwise None."""
+    key = normalize(text) if isinstance(text, str) else ""
+    if not key:
+        return None
+    first = key[0]
+    if first.isdigit() or not first.isalpha():
+        return "#"
+    folded = unicodedata.normalize("NFKD", first)
+    base = next(
+        (ch.casefold() for ch in folded if unicodedata.category(ch) != "Mn"),
+        "",
+    )
+    if len(base) == 1 and "a" <= base <= "z":
+        return base.upper()
+    return None
+
 def token(value):
     if not isinstance(value, str) or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", value):
         raise ValueError("Invalid identifier: %r" % value)
@@ -225,41 +243,75 @@ class Registry:
                 except OSError:
                     pass
 
-    def browse_entry(self, dictionary, entry_id=None, *, letter=None, direction=0):
-        """Return one VLF entry for sequential/alphabetic navigation."""
+    def browse_entry(
+        self, dictionary, entry_id=None, *, letter=None, direction=0, edge="first"
+    ):
+        """Return one VLF entry for sequential or dictionary-index navigation."""
         if direction not in (-1, 0, 1):
             raise ValueError("direction must be -1, 0 or 1")
+        if edge not in ("first", "last"):
+            raise ValueError("edge must be first or last")
 
         manifest, path = self.dictionary(dictionary)
         with closing(connect_read(path)) as db:
             row = None
+
             if letter is not None:
-                key = normalize(str(letter))
-                if len(key) != 1 or not ("a" <= key <= "z"):
-                    raise ValueError("letter must be A..Z")
-                variants = {
-                    "a": "aáàâãäå",
-                    "c": "cç",
-                    "e": "eéèêë",
-                    "i": "iíìîï",
-                    "n": "nñ",
-                    "o": "oóòôõöø",
-                    "u": "uúùûü",
-                    "y": "yýÿ",
-                }.get(key, key)
-                clauses = " OR ".join("normalized LIKE ?" for _ in variants)
-                params = tuple(char + "%" for char in variants)
-                row = db.execute(
-                    "SELECT id,payload FROM entries WHERE "
-                    + clauses
-                    + " ORDER BY normalized,lemma,id LIMIT 1",
-                    params,
-                ).fetchone()
+                index = str(letter).strip().upper()
+                if index != "#" and (
+                    len(index) != 1 or not ("A" <= index <= "Z")
+                ):
+                    raise ValueError("letter must be # or A..Z")
+
+                order = (
+                    "ORDER BY normalized DESC,lemma DESC,id DESC LIMIT 1"
+                    if edge == "last"
+                    else "ORDER BY normalized,lemma,id LIMIT 1"
+                )
+
+                if index == "#":
+                    # '#' means numbers and symbols only.  Iterate the ordered
+                    # cursor without materializing the dictionary in memory.
+                    sql = (
+                        "SELECT id,payload,lemma FROM entries "
+                        + (
+                            "ORDER BY normalized DESC,lemma DESC,id DESC"
+                            if edge == "last"
+                            else "ORDER BY normalized,lemma,id"
+                        )
+                    )
+                    for candidate in db.execute(sql):
+                        if lexical_index(candidate[2]) == "#":
+                            row = candidate[:2]
+                            break
+                else:
+                    key = index.casefold()
+                    variants = {
+                        "a": "aáàâãäå",
+                        "c": "cç",
+                        "e": "eéèêë",
+                        "i": "iíìîï",
+                        "n": "nñ",
+                        "o": "oóòôõöø",
+                        "u": "uúùûü",
+                        "y": "yýÿ",
+                    }.get(key, key)
+                    clauses = " OR ".join(
+                        "normalized LIKE ?" for _ in variants
+                    )
+                    params = tuple(char + "%" for char in variants)
+                    row = db.execute(
+                        "SELECT id,payload FROM entries WHERE "
+                        + clauses + " " + order,
+                        params,
+                    ).fetchone()
+
             elif entry_id is None:
                 row = db.execute(
                     "SELECT id,payload FROM entries "
                     "ORDER BY normalized,lemma,id LIMIT 1"
                 ).fetchone()
+
             else:
                 current = db.execute(
                     "SELECT normalized,lemma,id FROM entries WHERE id=?",
@@ -275,7 +327,11 @@ class Registry:
                         "(normalized = ? AND lemma < ?) OR "
                         "(normalized = ? AND lemma = ? AND id < ?) "
                         "ORDER BY normalized DESC,lemma DESC,id DESC LIMIT 1",
-                        (normalized, normalized, lemma, normalized, lemma, current_id),
+                        (
+                            normalized,
+                            normalized, lemma,
+                            normalized, lemma, current_id,
+                        ),
                     ).fetchone()
                 elif direction > 0:
                     row = db.execute(
@@ -284,7 +340,11 @@ class Registry:
                         "(normalized = ? AND lemma > ?) OR "
                         "(normalized = ? AND lemma = ? AND id > ?) "
                         "ORDER BY normalized,lemma,id LIMIT 1",
-                        (normalized, normalized, lemma, normalized, lemma, current_id),
+                        (
+                            normalized,
+                            normalized, lemma,
+                            normalized, lemma, current_id,
+                        ),
                     ).fetchone()
                 else:
                     row = db.execute(
@@ -294,12 +354,15 @@ class Registry:
 
         if row is None:
             return None
+        payload = json.loads(row[1])
         return {
             "dictionary": manifest["slug"],
             "entry_id": row[0],
-            "entry": json.loads(row[1]),
+            "entry": payload,
+            "index": lexical_index(payload.get("lemma", "")),
             "match": "browse",
         }
+
 
     def browse(self, dictionary, page=0, page_size=100, seek=None):
         """Browse one installed dictionary without loading its full index.
