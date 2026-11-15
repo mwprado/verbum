@@ -3,6 +3,8 @@ version = 1
 
 [[dictionaries]]
 title = "Longman Dictionary of Contemporary English"
+display_name = "LDOCE"
+edition_title = "Longman Dictionary of Contemporary English — 5th Edition"
 language = "en"
 origin = "longman"
 function = "learner"
@@ -18,6 +20,7 @@ requires_original = true
 
 [[dictionaries]]
 title = "Aurélio"
+display_name = "Aurélio"
 language = "pt-br"
 origin = "aurelio"
 function = "general"
@@ -31,9 +34,19 @@ requires_original = true
 
 [[dictionaries]]
 title = "Michaelis — multilíngue"
+display_name = "Michaelis"
+edition_title = "DIC Michaelis Escolar — Dicionário Escolar Língua Portuguesa"
 language = "mul"
 origin = "michaelis"
 function = "general"
+edition = "3-0"
+publisher = "Editora Melhoramentos Ltda."
+software = "Amigo Mouse Software"
+release_date = "2008-08"
+lexicography = "Equipe Melhoramentos, coordenação de Clóvis Osvaldo Gregorim"
+citations_selection = "Francisco S. Borba e Sebastião Expedito Ignácio (UNESP — Araraquara)"
+etymology_credit = "Mário Eduardo Viaro (USP)"
+orthography_note = "Ortografia atualizada conforme o Acordo Ortográfico da Língua Portuguesa (1990)"
 license = "proprietary"
 license_type = "proprietary"
 access = "local"
@@ -44,6 +57,7 @@ requires_original = true
 
 [[dictionaries]]
 title = "Houaiss"
+display_name = "Houaiss"
 language = "pt-br"
 origin = "houaiss"
 function = "general"
