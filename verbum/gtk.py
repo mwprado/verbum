@@ -973,7 +973,21 @@ class Window(Adw.ApplicationWindow):
                 missing = result.get("missing_resources", 0)
                 if missing:
                     message += f" · {missing:n} recurso(s) ausente(s) na fonte"
+                corrupt = result.get("corrupt_resources", 0)
+                if corrupt:
+                    message += f" · {corrupt:n} recurso(s) irrecuperável(is)"
+                    if result.get("corrupt_log"):
+                        message += " · log salvo"
                 self.toast_overlay.add_toast(Adw.Toast.new(message))
+                if result.get("corrupt_log"):
+                    self.toast_overlay.add_toast(
+                        Adw.Toast.new("Log: " + Path(result["corrupt_log"]).name)
+                    )
+                elif result.get("corrupt_log_error"):
+                    self.show_error_dialog(
+                        "Não foi possível gravar o log de mídia",
+                        result["corrupt_log_error"],
+                    )
         def report(stage, count, total):
             # Immutable snapshot; the GTK main thread alone updates widgets.
             self.import_stage = (stage, count, total)
