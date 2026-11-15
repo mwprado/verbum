@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        34%{?dist}
+Release:        35%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -92,6 +92,14 @@ from verbum_ldoce5.media import main
 raise SystemExit(main())
 EOF
 chmod 0755 %{buildroot}%{_bindir}/verbum-ldoce5-media
+%{_bindir}/verbum-ldoce5-recover
+
+cat > %{buildroot}%{_bindir}/verbum-ldoce5-recover <<'EOF'
+#!%{__python3}
+from verbum_ldoce5.recover import main
+raise SystemExit(main())
+EOF
+chmod 0755 %{buildroot}%{_bindir}/verbum-ldoce5-recover
 
 desktop-file-install --dir=%{buildroot}%{_datadir}/applications data/%{appid}.desktop
 install -Dm0644 data/%{appid}.svg %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/%{appid}.svg
@@ -101,7 +109,7 @@ install -Dm0644 data/%{appid}.metainfo.xml %{buildroot}%{_datadir}/metainfo/%{ap
 %check
 %{__python3} -m unittest discover -s tests -p 'test_verbum*.py' -v
 %{__python3} -c 'from verbum.gtk import Application; from verbum import resources'
-%{__python3} -c 'from verbum_ldoce5.export import validate_source; from verbum_ldoce5 import idmreader; from verbum_ldoce5.media import read_media'
+%{__python3} -c 'from verbum_ldoce5.export import validate_source; from verbum_ldoce5 import idmreader; from verbum_ldoce5.media import read_media; from verbum_ldoce5.recover import recover_log'
 desktop-file-validate %{buildroot}%{_datadir}/applications/%{appid}.desktop
 appstream-util validate-relax --nonet %{buildroot}%{_datadir}/metainfo/%{appid}.metainfo.xml
 # Test MIME compilation outside the buildroot.
@@ -123,6 +131,14 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-35
+- Add verbum-ldoce5-recover for official LDOCE Online example-audio recovery
+- Read pending/failed exa_pron items from Verbum JSONL recovery logs
+- Allow additional MP3 names for batch recovery of a damaged TDZ block
+- Validate downloaded MPEG Layer III audio before accepting it
+- Store recovered media privately without modifying the original LDOCE5 or VLF
+- Record source URL, SHA-256, size, local path and recovery status in JSONL
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-34
 - Prefer lema_original when importing recovered legacy dictionary records
 - Remove trailing legacy homograph markers such as $1$ and $2$ from searchable lemmas
