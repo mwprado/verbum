@@ -11,7 +11,7 @@ gi.require_version("Adw", "1")
 gi.require_version("Gdk", "4.0")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk, Pango
 
-from .core import Registry, ImportCancelled, DictionaryAlreadyInstalled
+from .core import Registry, ImportCancelled, DictionaryAlreadyInstalled, lexical_index
 from .catalog import catalog_list
 from .importers import IMPORT_FORMATS, import_dictionary
 from .media import get_media
@@ -98,6 +98,7 @@ class Window(Adw.ApplicationWindow):
         self.restoring_history = False
         self.refreshing_filters = False
         self.browse_current_hit = None
+        self.browse_current_index = None
         self.pane = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL, position=250,
                               vexpand=True, hexpand=True)
         outer.append(self.pane)
@@ -218,7 +219,8 @@ class Window(Adw.ApplicationWindow):
         result_scroll.set_visible(False)
         right.append(result_scroll)
 
-        # Dictionary-style bottom index: word arrows above A..Z tabs.
+        # Dictionary-style bottom index.  Keep the full # + A..Z row
+        # visible whenever the window has enough width.
         self.browse_controls = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             spacing=2,
@@ -233,8 +235,18 @@ class Window(Adw.ApplicationWindow):
             spacing=6,
             halign=Gtk.Align.CENTER,
         )
+        self.index_first = Gtk.Button(
+            label="<<",
+            tooltip_text="Primeiro verbete do índice atual",
+        )
+        self.index_first.add_css_class("flat")
+        self.index_first.connect(
+            "clicked", lambda *_: self.jump_index_edge("first")
+        )
+        arrows.append(self.index_first)
+
         self.word_previous = Gtk.Button(
-            icon_name="go-previous-symbolic",
+            label="←",
             tooltip_text="Verbete anterior",
         )
         self.word_previous.add_css_class("flat")
@@ -243,13 +255,14 @@ class Window(Adw.ApplicationWindow):
         )
         arrows.append(self.word_previous)
 
-        current_hint = Gtk.Label(label="verbete")
-        current_hint.add_css_class("dim-label")
-        current_hint.set_selectable(False)
-        arrows.append(current_hint)
+        self.current_index_label = Gtk.Label(label="")
+        self.current_index_label.add_css_class("dim-label")
+        self.current_index_label.set_selectable(False)
+        self.current_index_label.set_width_chars(2)
+        arrows.append(self.current_index_label)
 
         self.word_next = Gtk.Button(
-            icon_name="go-next-symbolic",
+            label="→",
             tooltip_text="Próximo verbete",
         )
         self.word_next.add_css_class("flat")
@@ -257,6 +270,16 @@ class Window(Adw.ApplicationWindow):
             "clicked", lambda *_: self.navigate_browse(1)
         )
         arrows.append(self.word_next)
+
+        self.index_last = Gtk.Button(
+            label=">>",
+            tooltip_text="Último verbete do índice atual",
+        )
+        self.index_last.add_css_class("flat")
+        self.index_last.connect(
+            "clicked", lambda *_: self.jump_index_edge("last")
+        )
+        arrows.append(self.index_last)
         self.browse_controls.append(arrows)
 
         alphabet_scroll = Gtk.ScrolledWindow(
@@ -269,17 +292,26 @@ class Window(Adw.ApplicationWindow):
         )
         alphabet = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=1,
-            halign=Gtk.Align.CENTER,
+            spacing=0,
+            homogeneous=True,
+            hexpand=True,
         )
-        for key in [chr(code) for code in range(ord("A"), ord("Z") + 1)]:
+        self.alphabet_buttons = {}
+        for key in ["#"] + [
+            chr(code) for code in range(ord("A"), ord("Z") + 1)
+        ]:
             jump = Gtk.Button(label=key)
             jump.add_css_class("flat")
-            jump.set_tooltip_text("Primeiro verbete com " + key)
+            jump.set_size_request(24, -1)
+            jump.set_tooltip_text(
+                "Números e símbolos" if key == "#"
+                else "Primeiro verbete com " + key
+            )
             jump.connect(
                 "clicked",
                 lambda _button, value=key: self.jump_browse(value),
             )
+            self.alphabet_buttons[key] = jump
             alphabet.append(jump)
         alphabet_scroll.set_child(alphabet)
         self.browse_controls.append(alphabet_scroll)
@@ -374,6 +406,8 @@ class Window(Adw.ApplicationWindow):
     def on_dictionary_selected(self, *_):
         if not self.refreshing_filters:
             self.browse_current_hit = None
+            self.browse_current_index = None
+            self.browse_controls.set_visible(bool(self.selected_dictionary()))
             self.schedule_search()
 
     def on_result_selected(self, box):
@@ -554,6 +588,35 @@ class Window(Adw.ApplicationWindow):
         if hits and auto_select:
             self.results.select_child(self.results.get_child_at_index(0))
 
+    def update_browse_navigation(self, hit):
+        selected = self.selected_dictionary()
+        visible = bool(selected)
+        self.browse_controls.set_visible(visible)
+        if not visible:
+            self.browse_current_hit = None
+            self.browse_current_index = None
+            return
+
+        if hit is not None and hit.get("dictionary") == selected:
+            self.browse_current_hit = hit
+            index = hit.get("index")
+            if index is None:
+                index = lexical_index(hit.get("entry", {}).get("lemma", ""))
+            self.browse_current_index = index
+        else:
+            index = getattr(self, "browse_current_index", None)
+
+        indexed = index in self.alphabet_buttons
+        self.index_first.set_sensitive(indexed)
+        self.index_last.set_sensitive(indexed)
+        self.current_index_label.set_text(index or "·")
+
+        for key, control in self.alphabet_buttons.items():
+            if key == index:
+                control.add_css_class("suggested-action")
+            else:
+                control.remove_css_class("suggested-action")
+
     def show_browse_hit(self, hit):
         if hit is None:
             return
@@ -561,12 +624,13 @@ class Window(Adw.ApplicationWindow):
         row.hit = hit
         self.select_result(None, row)
 
-    def jump_browse(self, letter):
+    def jump_browse(self, letter, edge="first"):
         selected = self.selected_dictionary()
-        if not selected or self.search.get_text().strip():
+        if not selected:
             return
         generation = self.generation = self.generation + 1
-        self.status.set_text("Abrindo " + str(letter).upper() + "…")
+        title = "números e símbolos" if letter == "#" else str(letter).upper()
+        self.status.set_text("Abrindo " + title + "…")
 
         def complete(hit, error):
             if generation != self.generation:
@@ -575,21 +639,27 @@ class Window(Adw.ApplicationWindow):
                 self.status.set_text(str(error))
                 return
             if hit is None:
-                self.status.set_text(
-                    "Nenhum verbete iniciado por " + str(letter).upper() + "."
-                )
+                self.status.set_text("Nenhum verbete neste índice.")
                 return
             self.browse_current_hit = hit
             self.show_browse_hit(hit)
-            self.browse_controls.set_visible(True)
+            self.update_browse_navigation(hit)
             self.word_previous.set_sensitive(True)
             self.word_next.set_sensitive(True)
             self.status.set_text("Navegando pelo dicionário.")
 
         self.work(
-            lambda: self.registry.browse_entry(selected, letter=letter),
+            lambda: self.registry.browse_entry(
+                selected, letter=letter, edge=edge
+            ),
             complete,
         )
+
+    def jump_index_edge(self, edge):
+        index = getattr(self, "browse_current_index", None)
+        if index not in self.alphabet_buttons:
+            return
+        self.jump_browse(index, edge=edge)
 
     def navigate_browse(self, direction):
         selected = self.selected_dictionary()
@@ -617,7 +687,7 @@ class Window(Adw.ApplicationWindow):
                 return
             self.browse_current_hit = hit
             self.show_browse_hit(hit)
-            self.browse_controls.set_visible(True)
+            self.update_browse_navigation(hit)
             self.word_previous.set_sensitive(True)
             self.word_next.set_sensitive(True)
             self.status.set_text("Navegando pelo dicionário.")
@@ -635,21 +705,21 @@ class Window(Adw.ApplicationWindow):
         self.status.set_text("Abrindo dicionário…")
         clear(self.results)
         self.result_scroll.set_visible(False)
+        self.browse_controls.set_visible(True)
 
         def complete(hit, error):
             if generation != self.generation:
                 return
             if error:
-                self.browse_controls.set_visible(False)
                 self.status.set_text(str(error))
                 return
             if hit is None:
-                self.browse_controls.set_visible(False)
                 self.show_empty("Dicionário vazio", "Nenhum verbete disponível.")
+                self.update_browse_navigation(None)
                 return
             self.browse_current_hit = hit
             self.show_browse_hit(hit)
-            self.browse_controls.set_visible(True)
+            self.update_browse_navigation(hit)
             self.word_previous.set_sensitive(False)
             self.word_next.set_sensitive(True)
             self.status.set_text("Navegando pelo dicionário.")
@@ -665,6 +735,7 @@ class Window(Adw.ApplicationWindow):
         query = self.search.get_text().strip()
         generation = self.generation
         selected = self.selected_dictionary()
+        self.browse_controls.set_visible(bool(selected))
         language = self.filter_value(self.language, self.language_keys)
         kind = self.filter_value(self.kind, self.kind_keys)
 
@@ -678,7 +749,7 @@ class Window(Adw.ApplicationWindow):
             self.status.set_text("Digite uma palavra ou selecione um dicionário.")
             return GLib.SOURCE_REMOVE
 
-        self.browse_controls.set_visible(False)
+        self.browse_controls.set_visible(bool(selected))
         self.status.set_text("Pesquisando…")
 
         def find():
@@ -735,11 +806,11 @@ class Window(Adw.ApplicationWindow):
         selected = self.selected_dictionary()
         if selected and hit.get("dictionary") == selected:
             self.browse_current_hit = hit
-            self.browse_controls.set_visible(True)
+            self.update_browse_navigation(hit)
             self.word_previous.set_sensitive(True)
             self.word_next.set_sensitive(True)
         else:
-            self.browse_controls.set_visible(False)
+            self.update_browse_navigation(None)
         e = hit["entry"]
         self.content_title.set_title("Verbum")
         head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4, halign=Gtk.Align.START)
