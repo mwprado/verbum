@@ -1,6 +1,9 @@
 """Source-specific import adapters. No arbitrary pickle deserialization."""
 import base64
+import gzip
+import io
 import json
+import pickle
 import shutil
 import subprocess
 from pathlib import Path
@@ -113,6 +116,138 @@ class _LongmanMediaLoader:
                     self.process.wait()
 
 
+class _RestrictedUnpickler(pickle.Unpickler):
+    """Unpickler that never resolves globals, classes or functions."""
+    def find_class(self, module, name):
+        raise pickle.UnpicklingError(
+            "objetos Python externos não são permitidos: " + module + "." + name
+        )
+
+
+def _validate_pickle_value(value, *, depth=0, items=[0]):
+    if depth > 64:
+        raise ValueError("Pickle legado excede a profundidade estrutural permitida.")
+    items[0] += 1
+    if items[0] > 5_000_000:
+        raise ValueError("Pickle legado contém objetos demais.")
+    if value is None or isinstance(value, (str, bytes, int, float, bool)):
+        return
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            _validate_pickle_value(item, depth=depth + 1, items=items)
+        return
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if not isinstance(key, (str, int, float, bool, bytes)):
+                raise ValueError("Pickle legado contém chave de tipo não permitido.")
+            _validate_pickle_value(item, depth=depth + 1, items=items)
+        return
+    raise ValueError("Pickle legado contém tipo não permitido: " + type(value).__name__)
+
+
+def _load_legacy_pickle(source):
+    path = Path(source).expanduser().resolve()
+    raw = path.read_bytes()
+    if len(raw) > 2 * 1024 * 1024 * 1024:
+        raise ValueError("Pickle legado excede 2 GiB.")
+    if path.suffix.lower() in (".pklz", ".gz") or raw.startswith(b"\x1f\x8b"):
+        try:
+            raw = gzip.decompress(raw)
+        except OSError as exc:
+            raise ValueError("Arquivo PKLZ/GZip inválido.") from exc
+    try:
+        value = _RestrictedUnpickler(io.BytesIO(raw)).load()
+    except (pickle.UnpicklingError, EOFError, AttributeError, ValueError, TypeError) as exc:
+        raise ValueError("Pickle legado inválido ou não seguro: " + str(exc)) from exc
+    _validate_pickle_value(value, items=[0])
+    return value
+
+
+def _legacy_definition(value):
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (int, float, bool)):
+        return str(value)
+    if isinstance(value, (list, tuple)):
+        return "\n".join(filter(None, (_legacy_definition(item) for item in value)))
+    if isinstance(value, dict):
+        preferred = ("definition", "definitions", "descricao", "descrição", "meaning", "meanings", "text", "html")
+        for key in preferred:
+            if key in value:
+                return _legacy_definition(value[key])
+        return "\n".join(
+            f"{_legacy_definition(key)}: {_legacy_definition(item)}"
+            for key, item in value.items()
+        )
+    return str(value)
+
+
+def _legacy_entry(record, lemma=None):
+    if isinstance(record, dict):
+        entry = dict(record)
+        candidate = entry.get("lemma") or entry.get("headword") or entry.get("word") or entry.get("termo") or lemma
+        if candidate is None:
+            raise ValueError("Registro Pickle sem lema.")
+        if isinstance(candidate, bytes):
+            candidate = candidate.decode("utf-8", errors="replace")
+        candidate = str(candidate).strip()
+        if not candidate:
+            raise ValueError("Registro Pickle com lema vazio.")
+        entry["lemma"] = candidate
+        if not any(key in entry for key in ("definition", "definitions", "senses")):
+            payload = {k: v for k, v in entry.items() if k != "lemma"}
+            entry["definition"] = _legacy_definition(payload)
+        return entry
+    if lemma is None and isinstance(record, (list, tuple)) and len(record) >= 2:
+        lemma, record = record[0], record[1:] if len(record) > 2 else record[1]
+    if lemma is None:
+        raise ValueError("Estrutura Pickle não contém lema identificável.")
+    if isinstance(lemma, bytes):
+        lemma = lemma.decode("utf-8", errors="replace")
+    return {"lemma": str(lemma).strip(), "definition": _legacy_definition(record)}
+
+
+def pickle_entries(source):
+    value = _load_legacy_pickle(source)
+    if isinstance(value, dict) and "entries" in value and isinstance(value["entries"], (list, tuple, dict)):
+        value = value["entries"]
+    if isinstance(value, dict):
+        for lemma, record in value.items():
+            yield _legacy_entry(record, lemma)
+        return
+    if isinstance(value, (list, tuple)):
+        for record in value:
+            yield _legacy_entry(record)
+        return
+    raise ValueError("Estrutura Pickle/PKLZ não suportada.")
+
+
+def _pickle_metadata(source):
+    path = Path(source).expanduser().resolve()
+    stem = path.name
+    for suffix in (".pklz", ".pickle", ".pkl", ".gz"):
+        if stem.lower().endswith(suffix):
+            stem = stem[:-len(suffix)]
+            break
+    title = stem.replace("_", " ").replace("-", " ").strip() or "Dicionário legado"
+    return {
+        "title": title,
+        "language": "und",
+        "origin": "legacy-" + "".join(ch.lower() if ch.isalnum() else "-" for ch in stem).strip("-")[:48],
+        "function": "general",
+        "license": "unverified",
+        "license_type": "unspecified",
+        "access": "local",
+        "source_path": str(path),
+        "source_format": "pickle-legacy",
+        "capabilities": ["definitions"],
+    }
+
+
 def json_entries(source, source_format=None):
     path = Path(source)
     with path.open(encoding="utf-8") as f:
@@ -134,6 +269,16 @@ def import_dictionary(registry, metadata, source, source_format="json", *, progr
     if source_format == "bgl":
         from .bgl import import_bgl
         return import_bgl(registry, source, metadata, progress=progress, cancel=cancel, rebuild=rebuild)
+    if source_format in ("pickle", "pklz"):
+        if metadata is not None:
+            raise ValueError("Pickle/PKLZ legado usa metadados gerados automaticamente; não informe manifesto.")
+        return registry.import_entries(
+            _pickle_metadata(source),
+            pickle_entries(source),
+            progress=progress,
+            cancel=cancel,
+            rebuild=rebuild,
+        )
     if source_format == "longman":
         if metadata is not None:
             raise ValueError("Longman usa os metadados nativos do catálogo; não informe manifesto.")
@@ -166,6 +311,7 @@ def import_dictionary(registry, metadata, source, source_format="json", *, progr
 IMPORT_FORMATS = (
     {"id": "longman", "title": "Longman LDOCE5", "description": "Diretório original IDM/SKN", "directory": True, "manifest": False},
     {"id": "bgl", "title": "Babylon BGL", "description": "Arquivo original .bgl (requer PyGlossary)", "directory": False, "manifest": False},
+    {"id": "pickle", "title": "Pickle / PKLZ legado", "description": "Arquivo .pkl, .pickle ou .pklz; desserialização restrita e conversão imediata para VLF", "directory": False, "manifest": False},
     {"id": "json", "title": "JSON", "description": "Arquivo estruturado com manifesto TOML", "directory": False, "manifest": True},
     {"id": "jsonl", "title": "JSON Lines", "description": "Arquivo de registros JSON com manifesto TOML", "directory": False, "manifest": True},
 )
