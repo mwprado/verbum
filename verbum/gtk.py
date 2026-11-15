@@ -326,6 +326,47 @@ class Window(Adw.ApplicationWindow):
                                  website="https://github.com/mwprado/verbum")
         dialog.present()
 
+    def copy_error(self, message):
+        self.get_clipboard().set(str(message))
+        self.toast_overlay.add_toast(Adw.Toast.new("Erro copiado para a área de transferência"))
+
+    def show_error_dialog(self, heading, message, *, transient=None):
+        """Show an error with selectable details and one-click clipboard copy."""
+        message = str(message)
+        dialog = Adw.MessageDialog(
+            transient_for=transient or self,
+            heading=heading,
+            body="Selecione o texto abaixo ou use “Copiar erro”.",
+        )
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=8,
+            margin_top=6,
+        )
+        details = Gtk.Label(label=message, xalign=0, wrap=True, selectable=True)
+        details.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        details.set_max_width_chars(72)
+        details.add_css_class("monospace")
+        scroller = Gtk.ScrolledWindow(
+            min_content_height=72,
+            max_content_height=240,
+            propagate_natural_height=True,
+        )
+        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroller.set_child(details)
+        box.append(scroller)
+
+        copy = Gtk.Button(label="Copiar erro")
+        copy.set_halign(Gtk.Align.END)
+        copy.connect("clicked", lambda *_: self.copy_error(message))
+        box.append(copy)
+
+        dialog.set_extra_child(box)
+        dialog.add_response("close", "Fechar")
+        dialog.set_close_response("close")
+        dialog.present()
+        return dialog
+
     def work(self, fn, done):
         future = self.pool.submit(fn)
         def finish(f):
@@ -709,11 +750,11 @@ class Window(Adw.ApplicationWindow):
             try:
                 self.registry.remove_dictionary(m["slug"])
             except Exception as exc:
-                error = Adw.MessageDialog(transient_for=self.preferences or self,
-                                          heading="Não foi possível remover", body=str(exc))
-                error.add_response("close", "Fechar")
-                error.set_close_response("close")
-                error.present()
+                self.show_error_dialog(
+                    "Não foi possível remover",
+                    exc,
+                    transient=self.preferences or self,
+                )
                 return
             self.generation += 1
             clear(self.results)
@@ -893,11 +934,7 @@ class Window(Adw.ApplicationWindow):
                 self.toast_overlay.add_toast(Adw.Toast.new("Dicionário já instalado"))
                 self.populate_preferences()
             elif error:
-                dialog = Adw.MessageDialog(transient_for=self, heading="Não foi possível importar",
-                                           body=str(error))
-                dialog.add_response("close", "Fechar")
-                dialog.set_close_response("close")
-                dialog.present()
+                self.show_error_dialog("Não foi possível importar", error)
             else:
                 self.refresh_dictionaries()
                 self.populate_preferences()
@@ -965,11 +1002,7 @@ class Application(Adw.Application):
                     raise ValueError("Selecione um arquivo BGL local.")
                 window.open_bgl(path)
             except (ValueError, OSError) as exc:
-                dialog = Adw.MessageDialog(transient_for=window,
-                    heading="Não foi possível abrir o dicionário", body=str(exc))
-                dialog.add_response("close", "Fechar")
-                dialog.set_close_response("close")
-                dialog.present()
+                window.show_error_dialog("Não foi possível abrir o dicionário", exc)
 
 def main(root=None, files=None):
     return Application(root).run(["verbum", "--", *(files or [])])
