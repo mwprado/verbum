@@ -13,7 +13,12 @@ class LegacyEmptyRecordTests(unittest.TestCase):
     def test_blank_mapping_key_with_empty_record_is_skipped(self):
         self.assertIsNone(_legacy_entry_optional({}, "   "))
 
-    def test_nonempty_malformed_record_still_fails(self):
+    def test_blank_map_key_with_description_is_skipped(self):
+        self.assertIsNone(
+            _legacy_entry_optional({"descricao": "registro auxiliar"}, "")
+        )
+
+    def test_nonempty_unkeyed_record_still_fails(self):
         with self.assertRaisesRegex(ValueError, "lema"):
             _legacy_entry_optional({"metadata": "conteúdo sem lema"})
 
