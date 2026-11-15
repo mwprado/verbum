@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        39%{?dist}
+Release:        40%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-40
+- Preserve Aurélio homograph metadata after legacy lemma normalization
+- Align regression tests with the canonical homograph payload field
+- Keep numbered senses distinct from numbered homograph/headword blocks
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-39
 - Correct Aurélio legacy $N$ semantics: marker identifies numbered homograph/entry
 - Keep sense numbering distinct from homograph numbering
