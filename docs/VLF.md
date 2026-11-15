@@ -961,3 +961,8 @@ Operational JSONL recovery records may transition from `pending` to `recovered` 
 
 
  is normalized to lemma `Água`, while the original marked key is retained as `source_lemma`. The marker is source metadata and is not part of the searchable lemma. Numbered senses within each homograph remain part of the lexical content and are distinct from this field.
+
+
+### Lexical presentation fields
+
+VLF payloads may use `etymology` (string), `grammar` (object), `senses` (ordered array), and `raw_definition` (original source text). Each structured sense may contain an explicit integer `index`, `definitions`, examples and source labels. Importers that derive structure from flattened legacy text must retain the original text and stop parsing when ordering becomes ambiguous.
