@@ -140,5 +140,47 @@ class DictionaryBrowseTests(unittest.TestCase):
 
 
 
+    def test_navigation_includes_entries_before_a_and_after_z(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = Registry(tmp)
+            imported = registry.import_entries(
+                {
+                    "title": "Limites",
+                    "language": "pt-br",
+                    "origin": "limites",
+                    "function": "general",
+                    "license": "test",
+                    "license_type": "unspecified",
+                    "access": "local",
+                },
+                [
+                    {"lemma": "123", "definition": "Antes de A"},
+                    {"lemma": "abacate", "definition": "A"},
+                    {"lemma": "zebra", "definition": "Z"},
+                    {"lemma": "Ωmega", "definition": "Depois de Z"},
+                ],
+            )
+
+            first = registry.browse_entry(imported["slug"])
+            self.assertEqual(first["entry"]["lemma"], "123")
+
+            a = registry.browse_entry(imported["slug"], letter="A")
+            self.assertEqual(a["entry"]["lemma"], "abacate")
+
+            before_a = registry.browse_entry(
+                imported["slug"], a["entry_id"], direction=-1
+            )
+            self.assertEqual(before_a["entry"]["lemma"], "123")
+
+            z = registry.browse_entry(imported["slug"], letter="Z")
+            self.assertEqual(z["entry"]["lemma"], "zebra")
+
+            after_z = registry.browse_entry(
+                imported["slug"], z["entry_id"], direction=1
+            )
+            self.assertEqual(after_z["entry"]["lemma"], "Ωmega")
+
+
+
 if __name__ == "__main__":
     unittest.main()
