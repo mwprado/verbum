@@ -481,7 +481,15 @@ class Window(Adw.ApplicationWindow):
         self.remember_hit(hit)
         e = hit["entry"]
         self.content_title.set_title("Verbum")
-        self.detail.append(label(e["lemma"], "title-1"))
+        head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4, halign=Gtk.Align.START)
+        head.append(label(e["lemma"], "title-1"))
+        homograph = e.get("homograph")
+        if isinstance(homograph, int):
+            marker = label(str(homograph), "caption")
+            marker.set_valign(Gtk.Align.START)
+            marker.set_margin_top(2)
+            head.append(marker)
+        self.detail.append(head)
         self.detail.append(label(next((m["title"] for m in self.manifests if m["slug"] == hit["dictionary"]), hit["dictionary"]), "dim-label"))
         grammar = e.get("grammar", {})
         if isinstance(grammar, dict):
@@ -563,10 +571,22 @@ class Window(Adw.ApplicationWindow):
                 examples = values(sense.get("examples"))
                 if definitions or examples or sense.get("example_details"):
                     rendered = True
-                    self.detail.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
-                    self.detail.append(label(f"Acepção {n}", "heading"))
-                    for text in definitions:
-                        self.detail.append(label(text))
+                    number = sense.get("index", n)
+                    for position, text in enumerate(definitions):
+                        line = Gtk.Box(
+                            orientation=Gtk.Orientation.HORIZONTAL,
+                            spacing=10,
+                            valign=Gtk.Align.START,
+                        )
+                        marker = label(str(number) if position == 0 else "", "heading")
+                        marker.set_width_chars(2)
+                        marker.set_xalign(1)
+                        marker.set_selectable(False)
+                        line.append(marker)
+                        definition = label(text)
+                        definition.set_hexpand(True)
+                        line.append(definition)
+                        self.detail.append(line)
                     render_examples(sense.get("example_details"), examples)
         if not rendered:
             for text in values(e.get("definition")) + values(e.get("definitions")):
@@ -575,6 +595,18 @@ class Window(Adw.ApplicationWindow):
         elif e.get("unassigned_examples"):
             self.detail.append(label("Outros exemplos", "heading"))
             render_examples(e["unassigned_examples"], [])
+
+        legacy_tail = e.get("legacy_tail")
+        if isinstance(legacy_tail, str) and legacy_tail.strip():
+            self.detail.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
+            self.detail.append(label("Outras entradas e locuções", "heading"))
+            self.detail.append(label(legacy_tail, "dim-label"))
+
+        etymology = e.get("etymology")
+        if isinstance(etymology, str) and etymology.strip():
+            self.detail.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
+            self.detail.append(label("Etimologia", "heading"))
+            self.detail.append(label(etymology))
 
         pictures = [
             i for i, ref in enumerate(media)
