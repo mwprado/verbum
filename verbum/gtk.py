@@ -331,28 +331,44 @@ class Window(Adw.ApplicationWindow):
         self.toast_overlay.add_toast(Adw.Toast.new("Erro copiado para a área de transferência"))
 
     def show_error_dialog(self, heading, message, *, transient=None):
-        """Show an error with selectable details and one-click clipboard copy."""
+        """Show a compact error dialog with expandable technical details."""
         message = str(message)
         dialog = Adw.MessageDialog(
             transient_for=transient or self,
             heading=heading,
-            body="Selecione o texto abaixo ou use “Copiar erro”.",
+            body="A operação não pôde ser concluída.",
         )
+
+        expander = Gtk.Expander(label="Mais informações")
+        expander.set_margin_top(6)
+
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             spacing=8,
-            margin_top=6,
+            margin_top=8,
         )
-        details = Gtk.Label(label=message, xalign=0, wrap=True, selectable=True)
-        details.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
-        details.set_max_width_chars(72)
-        details.add_css_class("monospace")
+
+        buffer = Gtk.TextBuffer()
+        buffer.set_text(message)
+        details = Gtk.TextView(
+            buffer=buffer,
+            editable=False,
+            cursor_visible=False,
+            wrap_mode=Gtk.WrapMode.WORD_CHAR,
+            left_margin=8,
+            right_margin=8,
+            top_margin=8,
+            bottom_margin=8,
+        )
+        details.add_css_class("view")
+        details.set_monospace(True)
+
         scroller = Gtk.ScrolledWindow(
-            min_content_height=72,
-            max_content_height=240,
+            min_content_height=84,
+            max_content_height=220,
             propagate_natural_height=True,
         )
-        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         scroller.set_child(details)
         box.append(scroller)
 
@@ -361,7 +377,8 @@ class Window(Adw.ApplicationWindow):
         copy.connect("clicked", lambda *_: self.copy_error(message))
         box.append(copy)
 
-        dialog.set_extra_child(box)
+        expander.set_child(box)
+        dialog.set_extra_child(expander)
         dialog.add_response("close", "Fechar")
         dialog.set_close_response("close")
         dialog.present()
