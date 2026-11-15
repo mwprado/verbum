@@ -41,16 +41,52 @@ def _add_location(result, key, location):
 @lru_cache(maxsize=16)
 def _locations(source, archive, signature):
     result = {}
+    full_paths = {}
     for dirs, name, location in idmreader.list_files(source, archive):
         clean_dirs = [part for part in dirs if part]
         full = "/".join((*clean_dirs, name))
-        # Index the complete internal path, the final directory + basename,
-        # and the basename itself. Ambiguous aliases are explicitly disabled.
+        full_paths[full] = location
+        # Fast aliases for the common layouts. Ambiguous aliases are
+        # deliberately disabled rather than resolved arbitrarily.
         _add_location(result, full, location)
         if clean_dirs:
             _add_location(result, clean_dirs[-1] + "/" + name, location)
         _add_location(result, name, location)
-    return result
+    return result, full_paths
+
+
+def _resolve_location(source, archive, name, signature):
+    aliases, full_paths = _locations(source, archive, signature)
+
+    location = aliases.get(name)
+    if location is not None:
+        return location
+
+    # LDOCE5 XML sometimes stores a logical relative path such as
+    # "thumbnail/abacus.jpg", while the SKN catalog contains one or more
+    # additional leading directories. Resolve only when the requested
+    # suffix identifies exactly one physical record.
+    suffix = "/" + name.strip("/")
+    matches = {
+        location
+        for path, location in full_paths.items()
+        if path == name or path.endswith(suffix)
+    }
+    if len(matches) == 1:
+        return next(iter(matches))
+
+    # Compatibility with older importer generations that retained only
+    # the basename. Accept it only when it identifies one record.
+    basename = name.rsplit("/", 1)[-1]
+    basename_matches = {
+        location
+        for path, location in full_paths.items()
+        if path.rsplit("/", 1)[-1] == basename
+    }
+    if len(basename_matches) == 1:
+        return next(iter(basename_matches))
+
+    return None
 
 
 def read_media(source, archive, name):
@@ -67,12 +103,7 @@ def read_media(source, archive, name):
             raise ValueError("invalid picture name")
 
     signature = _archive_signature(source, archive)
-    locations = _locations(source, archive, signature)
-    location = locations.get(name)
-    if location is None and archive != "picture":
-        # Compatibility with older VLF/importer generations that retained
-        # only a basename. This succeeds only when that basename is unique.
-        location = locations.get(parts[-1])
+    location = _resolve_location(source, archive, name, signature)
     if location is None:
         raise ValueError("missing or ambiguous media resource: " + archive + "/" + name)
     if any(value < 0 for value in location) or location[3] > 64 * 1024 * 1024:
