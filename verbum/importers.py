@@ -424,7 +424,10 @@ def _structure_legacy_definition(entry):
     senses = []
     for index, marker in enumerate(accepted):
         end = accepted[index + 1].start() if index + 1 < len(accepted) else stop
-        body = rest[marker.end():end].strip()
+        body_start = marker.end()
+        raw_body = rest[body_start:end]
+        leading = len(raw_body) - len(raw_body.lstrip())
+        body = raw_body.strip()
         if index == len(accepted) - 1 and stop < len(rest):
             # If a numbered sequence restarts, the short title immediately
             # before the new "1." normally belongs to the next embedded entry.
@@ -433,7 +436,7 @@ def _structure_legacy_definition(entry):
                 body,
             )
             if title:
-                stop -= len(body) - title.start(1)
+                stop = body_start + leading + title.start(1)
                 body = body[:title.start(1)].rstrip()
         if body:
             senses.append({
