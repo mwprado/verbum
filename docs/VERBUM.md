@@ -415,3 +415,6 @@ The GTK detail view renders homograph numbers beside the headword and numbered s
 
 
 The “Outras entradas e locuções” section is intentionally compact: only embedded headword/locution titles are exposed as `legacy_entries`. Their definitions remain preserved in `legacy_tail` and `raw_definition` but are not rendered in that section, avoiding an unreadable duplicate wall of text.
+
+
+The GTK presentation of `legacy_entries` uses a compact three-column navigation grid. Only headword/locution titles are shown; each item is directly actionable and starts a new lexical search when selected. A count and short interaction hint are shown above the grid. Full embedded definitions remain preserved but hidden from this compact navigation section.
