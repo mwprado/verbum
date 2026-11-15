@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        17%{?dist}
+Release:        18%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -123,6 +123,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sat Nov 14 2026 Moacyr Prado - 0.5.0-18
+- Match original LDOCE5 audio file-map semantics
+- Resolve GB/US/example/SFX audio by basename from XML topic
+- Keep picture resolution on dirs[0]/filename semantics
+
 * Sat Nov 14 2026 Moacyr Prado - 0.5.0-17
 - Match original LDOCE5 picture file-map semantics
 - Resolve picture resources as dirs[0]/filename
