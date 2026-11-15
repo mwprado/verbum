@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        43%{?dist}
+Release:        44%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,12 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-44
+- Show only headword/locution titles under Outras entradas e locuções
+- Preserve full embedded definitions in legacy_tail/raw_definition without rendering them
+- Extract deduplicated legacy_entries during import for compact presentation
+- Add regression coverage for related-entry title extraction
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-43
 - Fix double escaping in legacy lexical-structure regular expressions
 - Restore grammar detection for forms such as 'Substantivo feminino.'
