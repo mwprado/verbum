@@ -358,10 +358,10 @@ def _legacy_definition(value):
 
 _LEGACY_GRAMMAR_PREFIX = re.compile(
     r"^(?P<grammar>(?:Substantivo|Adjetivo|Advérbio|Verbo|Pronome|Preposição|"
-    r"Conjunção|Interjeição|Artigo|Numeral)(?:\\s+[A-Za-zÀ-ÖØ-öø-ÿ]+){0,4})\\.\\s+",
+    r"Conjunção|Interjeição|Artigo|Numeral)(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ]+){0,4})\.\s+",
     re.IGNORECASE,
 )
-_LEGACY_SENSE_MARKER = re.compile(r"(?<!\\S)(\\d{1,3})\\.\\s+")
+_LEGACY_SENSE_MARKER = re.compile(r"(?<!\S)(\d{1,3})\.\s+")
 
 
 def _structure_legacy_definition(entry):
@@ -432,7 +432,7 @@ def _structure_legacy_definition(entry):
             # If a numbered sequence restarts, the short title immediately
             # before the new "1." normally belongs to the next embedded entry.
             title = re.search(
-                r"(?:^|[.!?]\\s+)([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-Za-zÀ-ÖØ-öø-ÿ'’ -]{1,80})\\.\\s*$",
+                r"(?:^|[.!?]\s+)([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-Za-zÀ-ÖØ-öø-ÿ'’ -]{1,80})\.\s*$",
                 body,
             )
             if title:
