@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        46%{?dist}
+Release:        47%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,12 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-47
+- Skip genuinely empty auxiliary records in legacy Pickle/PKLZ containers
+- Prevent blank VOLP index records from aborting an otherwise valid import
+- Keep non-empty malformed lexical records as hard errors instead of hiding corruption
+- Add regression coverage for empty legacy records
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-46
 - Use compact source names such as Aurélio, Michaelis and LDOCE in the GTK UI
 - Show the full dictionary edition title as a smaller secondary line
