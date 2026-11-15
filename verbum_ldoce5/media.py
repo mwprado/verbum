@@ -1,0 +1,120 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Read LDOCE5 binary media for Verbum through a line-oriented subprocess API."""
+import argparse
+import base64
+import json
+import sys
+import zlib
+from functools import lru_cache
+from pathlib import Path
+
+from . import idmreader
+from .export import validate_source
+
+AUDIO_ARCHIVES = frozenset(("gb_hwd_pron", "us_hwd_pron", "exa_pron", "sfx", "sound"))
+MEDIA_ARCHIVES = AUDIO_ARCHIVES | {"picture"}
+
+
+def _archive_signature(source, archive):
+    base = Path(source) / (archive + ".skn")
+    files = [
+        base / directory / name
+        for directory, names in (
+            ("dirs.skn", ("config.cft", "NAME.tda", "dirs.dat")),
+            ("files.skn", ("config.cft", "NAME.tda", "files.dat", "CONTENT.tda", "CONTENT.tda.tdz")),
+        )
+        for name in names
+    ]
+    return tuple((p.stat().st_size, p.stat().st_mtime_ns) for p in files)
+
+
+@lru_cache(maxsize=16)
+def _locations(source, archive, signature):
+    result = {}
+    for dirs, name, location in idmreader.list_files(source, archive):
+        key = dirs[0] + "/" + name if archive == "picture" else name
+        if key in result and result[key] != location:
+            result[key] = None
+        else:
+            result[key] = location
+    return result
+
+
+def read_media(source, archive, name):
+    if archive not in MEDIA_ARCHIVES:
+        raise ValueError("unsupported media archive")
+    source = str(validate_source(source))
+    if not isinstance(name, str) or not name or "\" in name or any(
+        part in ("", ".", "..") for part in name.split("/")
+    ):
+        raise ValueError("invalid media name")
+    if archive == "picture":
+        parts = name.split("/")
+        if len(parts) != 2 or parts[0] not in ("thumbnail", "fullsize"):
+            raise ValueError("invalid picture name")
+    elif "/" in name:
+        raise ValueError("invalid audio name")
+
+    signature = _archive_signature(source, archive)
+    location = _locations(source, archive, signature).get(name)
+    if location is None:
+        raise ValueError("missing or ambiguous media resource: " + archive + "/" + name)
+    if any(value < 0 for value in location) or location[3] > 64 * 1024 * 1024:
+        raise ValueError("invalid media record size")
+
+    try:
+        with idmreader.ArchiveReader(source, archive) as reader:
+            data = reader.read(location)
+    except zlib.error as exc:
+        raise ValueError("corrupt media record") from exc
+    if not data or len(data) != location[3]:
+        raise ValueError("empty or truncated media record")
+
+    if archive == "picture":
+        if data.startswith(b"\xff\xd8\xff"):
+            mime = "image/jpeg"
+        elif data.startswith(b"\x89PNG\r\n\x1a\n"):
+            mime = "image/png"
+        elif data.startswith((b"GIF87a", b"GIF89a")):
+            mime = "image/gif"
+        else:
+            raise ValueError("unsupported picture encoding")
+    else:
+        mime = "audio/mpeg"
+
+    return data, mime
+
+
+def serve(source):
+    source = str(validate_source(source))
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            request = json.loads(line)
+            data, mime = read_media(source, request["archive"], request["name"])
+            response = {
+                "ok": True,
+                "mime": mime,
+                "data": base64.b64encode(data).decode("ascii"),
+            }
+        except Exception as exc:
+            response = {"ok": False, "error": str(exc)}
+        print(json.dumps(response, separators=(",", ":")), flush=True)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(prog="verbum-ldoce5-media")
+    parser.add_argument("source", help="Original LDOCE5 data directory")
+    args = parser.parse_args(argv)
+    try:
+        serve(args.source)
+        return 0
+    except (OSError, ValueError) as exc:
+        print(f"verbum-ldoce5-media: {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
