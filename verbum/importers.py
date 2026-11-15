@@ -355,6 +355,111 @@ def _legacy_definition(value):
     return str(value)
 
 
+
+_LEGACY_GRAMMAR_PREFIX = re.compile(
+    r"^(?P<grammar>(?:Substantivo|Adjetivo|Advérbio|Verbo|Pronome|Preposição|"
+    r"Conjunção|Interjeição|Artigo|Numeral)(?:\\s+[A-Za-zÀ-ÖØ-öø-ÿ]+){0,4})\\.\\s+",
+    re.IGNORECASE,
+)
+_LEGACY_SENSE_MARKER = re.compile(r"(?<!\\S)(\\d{1,3})\\.\\s+")
+
+
+def _structure_legacy_definition(entry):
+    """Conservatively recover lexical structure from a flattened legacy entry.
+
+    The original text is retained as raw_definition.  Numbered senses are only
+    accepted when they start at 1 and increase consecutively; a reset or jump
+    ends the structured region instead of guessing across another embedded
+    headword/section.
+    """
+    definition = entry.get("definition")
+    if not isinstance(definition, str):
+        return entry
+    text = " ".join(definition.split())
+    if not text:
+        return entry
+
+    rest = text
+    etymology = None
+    if rest.startswith("["):
+        end = rest.find("]")
+        if 0 < end <= 240:
+            etymology = rest[1:end].strip()
+            rest = rest[end + 1:].lstrip()
+            if rest.startswith("."):
+                rest = rest[1:].lstrip()
+
+    grammar = None
+    grammar_match = _LEGACY_GRAMMAR_PREFIX.match(rest)
+    if grammar_match:
+        grammar = grammar_match.group("grammar").strip()
+        rest = rest[grammar_match.end():]
+
+    markers = list(_LEGACY_SENSE_MARKER.finditer(rest))
+    if not markers or int(markers[0].group(1)) != 1:
+        if etymology or grammar:
+            entry.setdefault("raw_definition", definition)
+            if etymology:
+                entry.setdefault("etymology", etymology)
+            if grammar:
+                current = entry.get("grammar")
+                if not isinstance(current, dict):
+                    current = {}
+                    entry["grammar"] = current
+                current.setdefault("pos", [grammar])
+            entry["definition"] = rest.strip() or definition
+        return entry
+
+    accepted = [markers[0]]
+    expected = 2
+    stop = len(rest)
+    for marker in markers[1:]:
+        number = int(marker.group(1))
+        if number != expected:
+            stop = marker.start()
+            break
+        accepted.append(marker)
+        expected += 1
+
+    senses = []
+    for index, marker in enumerate(accepted):
+        end = accepted[index + 1].start() if index + 1 < len(accepted) else stop
+        body = rest[marker.end():end].strip()
+        if index == len(accepted) - 1 and stop < len(rest):
+            # If a numbered sequence restarts, the short title immediately
+            # before the new "1." normally belongs to the next embedded entry.
+            title = re.search(
+                r"(?:^|[.!?]\\s+)([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-Za-zÀ-ÖØ-öø-ÿ'’ -]{1,80})\\.\\s*$",
+                body,
+            )
+            if title:
+                stop -= len(body) - title.start(1)
+                body = body[:title.start(1)].rstrip()
+        if body:
+            senses.append({
+                "index": int(marker.group(1)),
+                "definitions": [body],
+            })
+
+    if not senses:
+        return entry
+
+    entry.setdefault("raw_definition", definition)
+    if etymology:
+        entry.setdefault("etymology", etymology)
+    if grammar:
+        current = entry.get("grammar")
+        if not isinstance(current, dict):
+            current = {}
+            entry["grammar"] = current
+        current.setdefault("pos", [grammar])
+    entry["senses"] = senses
+    entry.pop("definition", None)
+    tail = rest[stop:].strip()
+    if tail:
+        entry.setdefault("legacy_tail", tail)
+    return entry
+
 _LEGACY_HOMOGRAPH_SUFFIX = re.compile(r"(?:\$(\d+)\$)+$")
 
 
@@ -417,7 +522,7 @@ def _legacy_entry(record, lemma=None):
         if not any(key in entry for key in ("definition", "definitions", "senses")):
             payload = {k: v for k, v in entry.items() if k != "lemma"}
             entry["definition"] = _legacy_definition(payload)
-        return entry
+        return _structure_legacy_definition(entry)
     if lemma is None and isinstance(record, (list, tuple)) and len(record) >= 2:
         lemma, record = record[0], record[1:] if len(record) > 2 else record[1]
     if lemma is None:
@@ -432,7 +537,7 @@ def _legacy_entry(record, lemma=None):
         result["source_lemma"] = raw_lemma.strip()
     if homograph is not None:
         result["homograph"] = homograph
-    return result
+    return _structure_legacy_definition(result)
 
 
 def _looks_like_legacy_entry(value):
