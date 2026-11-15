@@ -73,6 +73,7 @@ class DictionaryBrowseTests(unittest.TestCase):
         )
         self.assertEqual(page["page"], 1)
         self.assertEqual(page["seek"], "dado")
+        self.assertIsNotNone(page["seek_entry_id"])
         self.assertEqual(
             [hit["entry"]["lemma"] for hit in page["hits"]],
             ["casa", "dado"],
