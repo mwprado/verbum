@@ -75,7 +75,7 @@ def dictionary_identity(manifest):
 
 class Window(Adw.ApplicationWindow):
     def __init__(self, app, registry):
-        super().__init__(application=app, title="Verbum", default_width=1100, default_height=740)
+        super().__init__(application=app, title="Verbum", default_width=1024, default_height=720)
         self.registry = registry
 
         # The # + A..Z strip must behave like narrow physical-dictionary tabs,
@@ -86,9 +86,9 @@ class Window(Adw.ApplicationWindow):
             .alphabet-index {
                 min-width: 0;
                 min-height: 0;
-                padding: 2px 3px;
+                padding: 2px 2px;
                 margin: 0;
-                border-radius: 3px;
+                border-radius: 2px;
             }
             """
         )
@@ -120,13 +120,17 @@ class Window(Adw.ApplicationWindow):
         self.refreshing_filters = False
         self.browse_current_hit = None
         self.browse_current_index = None
-        self.pane = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL, position=250,
-                              vexpand=True, hexpand=True)
+        self.pane = Gtk.Paned(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            position=220,
+            vexpand=True,
+            hexpand=True,
+        )
         outer.append(self.pane)
         left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.sidebar = left
         left.add_css_class("sidebar")
-        left.set_size_request(200, -1)
+        left.set_size_request(180, -1)
         self.pane.set_start_child(left)
         self.pane.set_resize_start_child(False)
         self.pane.set_shrink_start_child(False)
@@ -303,15 +307,8 @@ class Window(Adw.ApplicationWindow):
         arrows.append(self.index_last)
         self.browse_controls.append(arrows)
 
-        alphabet_scroll = Gtk.ScrolledWindow(
-            hexpand=True,
-            propagate_natural_height=True,
-        )
-        alphabet_scroll.set_policy(
-            Gtk.PolicyType.AUTOMATIC,
-            Gtk.PolicyType.NEVER,
-        )
-        alphabet_scroll.set_overlay_scrolling(True)
+        # At the 1024x768 reference resolution the complete index must
+        # remain visible.  Do not hide letters behind a horizontal scroller.
         alphabet = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
             spacing=0,
@@ -327,7 +324,7 @@ class Window(Adw.ApplicationWindow):
             jump = Gtk.Button(label=key)
             jump.add_css_class("flat")
             jump.add_css_class("alphabet-index")
-            jump.set_size_request(14, -1)
+            jump.set_size_request(12, -1)
             jump.set_hexpand(True)
             jump.set_tooltip_text(
                 "Números e símbolos" if key == "#"
@@ -339,8 +336,7 @@ class Window(Adw.ApplicationWindow):
             )
             self.alphabet_buttons[key] = jump
             alphabet.append(jump)
-        alphabet_scroll.set_child(alphabet)
-        self.browse_controls.append(alphabet_scroll)
+        self.browse_controls.append(alphabet)
         self.browse_controls.set_visible(False)
 
         self.detail = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12,
