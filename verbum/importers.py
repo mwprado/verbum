@@ -357,6 +357,7 @@ def _legacy_definition(value):
 
 
 _HOUAISS_RTF_HEX = re.compile(r"\\'([0-9A-Fa-f]{2})")
+_HOUAISS_RTF_DOUBLE_CONTROL = re.compile(r"\\\\[A-Za-z]+-?\d* ?")
 _HOUAISS_RTF_CONTROL = re.compile(r"\\[A-Za-z]+-?\d* ?")
 
 
@@ -377,6 +378,7 @@ def _clean_houaiss_markup(text):
             return match.group(0)
 
     cleaned = _HOUAISS_RTF_HEX.sub(hex_escape, text)
+    cleaned = _HOUAISS_RTF_DOUBLE_CONTROL.sub("", cleaned)
 
     # Protect escaped literal braces/backslashes while removing RTF groups.
     literals = {
