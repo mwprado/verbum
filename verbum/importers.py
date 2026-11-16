@@ -356,6 +356,105 @@ def _legacy_definition(value):
 
 
 
+_HOUAISS_RTF_HEX = re.compile(r"\\\\'([0-9A-Fa-f]{2})")
+_HOUAISS_RTF_CONTROL = re.compile(r"\\\\[A-Za-z]+-?\\d* ?")
+
+
+def _clean_houaiss_markup(text):
+    """Remove Houaiss inline RTF-like formatting without deleting examples.
+
+    Angle-bracketed fragments are preserved because the recovered Houaiss
+    source also uses <...> for examples and literal notation; they are not
+    reliably HTML tags.
+    """
+    if not isinstance(text, str) or not text:
+        return text
+
+    def hex_escape(match):
+        try:
+            return bytes([int(match.group(1), 16)]).decode("cp1252")
+        except (ValueError, UnicodeDecodeError):
+            return match.group(0)
+
+    cleaned = _HOUAISS_RTF_HEX.sub(hex_escape, text)
+
+    # Protect escaped literal braces/backslashes while removing RTF groups.
+    literals = {
+        r"\{": "\uFFF0",
+        r"\}": "\uFFF1",
+        r"\\": "\uFFF2",
+    }
+    for escaped, marker in literals.items():
+        cleaned = cleaned.replace(escaped, marker)
+
+    cleaned = _HOUAISS_RTF_CONTROL.sub("", cleaned)
+    cleaned = cleaned.replace("{", "").replace("}", "")
+
+    cleaned = (
+        cleaned.replace("\uFFF0", "{")
+        .replace("\uFFF1", "}")
+        .replace("\uFFF2", "\\")
+    )
+
+    lines = []
+    for line in cleaned.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        line = re.sub(r"[ \t]+", " ", line).strip()
+        lines.append(line)
+    cleaned = "\n".join(lines)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
+
+
+def _clean_houaiss_entry(entry):
+    """Clean display/search fields while preserving the recovered raw source."""
+    if not isinstance(entry, dict):
+        return entry
+
+    definition = entry.get("definition")
+    if isinstance(definition, str):
+        entry.setdefault("raw_definition", definition)
+        entry["definition"] = _clean_houaiss_markup(definition)
+
+    definitions = entry.get("definitions")
+    if isinstance(definitions, list):
+        entry["definitions"] = [
+            _clean_houaiss_markup(value) if isinstance(value, str) else value
+            for value in definitions
+        ]
+
+    senses = entry.get("senses")
+    if isinstance(senses, list):
+        for sense in senses:
+            if not isinstance(sense, dict):
+                continue
+            values = sense.get("definitions")
+            if isinstance(values, list):
+                sense["definitions"] = [
+                    _clean_houaiss_markup(value)
+                    if isinstance(value, str) else value
+                    for value in values
+                ]
+            examples = sense.get("examples")
+            if isinstance(examples, list):
+                sense["examples"] = [
+                    _clean_houaiss_markup(value)
+                    if isinstance(value, str) else value
+                    for value in examples
+                ]
+
+    if isinstance(entry.get("etymology"), str):
+        entry["etymology"] = _clean_houaiss_markup(entry["etymology"])
+    return entry
+
+
+def _is_houaiss_pickle(source):
+    name = Path(source).name
+    folded = unicodedata.normalize("NFKD", name).encode(
+        "ascii", "ignore"
+    ).decode("ascii").casefold()
+    return "houaiss" in folded or "deah" in folded
+
+
 _LEGACY_GRAMMAR_PREFIX = re.compile(
     r"^(?P<grammar>(?:Substantivo|Adjetivo|Advérbio|Verbo|Pronome|Preposição|"
     r"Conjunção|Interjeição|Artigo|Numeral)(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ]+){0,4})\.\s+",
@@ -740,6 +839,12 @@ def _rocha_pombo_entries(value):
 
 def pickle_entries(source):
     value = _load_legacy_pickle(source)
+    clean_houaiss = _is_houaiss_pickle(source)
+
+    def finalize(entry):
+        if clean_houaiss:
+            return _clean_houaiss_entry(entry)
+        return entry
     if _is_rocha_pombo_container(value):
         yield from _rocha_pombo_entries(value)
         return
@@ -754,18 +859,18 @@ def pickle_entries(source):
         if _looks_like_legacy_entry(value):
             entry = _legacy_entry_optional(value)
             if entry is not None:
-                yield entry
+                yield finalize(entry)
             return
         for lemma, record in value.items():
             entry = _legacy_entry_optional(record, lemma)
             if entry is not None:
-                yield entry
+                yield finalize(entry)
         return
     if isinstance(value, (list, tuple)):
         for record in value:
             entry = _legacy_entry_optional(record)
             if entry is not None:
-                yield entry
+                yield finalize(entry)
         return
     raise ValueError("Estrutura Pickle/PKLZ não suportada.")
 
@@ -787,6 +892,21 @@ def _pickle_metadata(source):
     origin = "legacy-" + (origin_tail or "dictionary")
 
     lowered = ascii_stem.casefold()
+    if "houaiss" in lowered or "deah" in lowered:
+        return {
+            "title": "Houaiss",
+            "display_name": "Houaiss",
+            "language": "pt-br",
+            "origin": "houaiss",
+            "function": "general",
+            "license": "unverified",
+            "license_type": "unspecified",
+            "access": "local",
+            "source_path": str(path),
+            "source_format": "pickle-houaiss",
+            "capabilities": ["definitions", "grammar", "etymology"],
+        }
+
     if "rocha" in lowered and "pombo" in lowered:
         return {
             "title": "Dicionário de Sinônimos da Língua Portuguesa",
