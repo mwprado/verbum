@@ -644,8 +644,105 @@ def _legacy_entry_optional(record, lemma=None):
         raise
 
 
+def _is_rocha_pombo_container(value):
+    """Recognize the structured Rocha Pombo synonym-comparison container."""
+    if not isinstance(value, dict):
+        return False
+    required = {"metadados", "grupos", "termos_para_grupos", "estatisticas"}
+    if not required.issubset(value):
+        return False
+    metadata = value.get("metadados")
+    groups = value.get("grupos")
+    terms = value.get("termos_para_grupos")
+    return (
+        isinstance(metadata, dict)
+        and metadata.get("formato") == "rocha-pombo-cotejos/1.0"
+        and isinstance(groups, dict)
+        and isinstance(terms, dict)
+    )
+
+
+def _rocha_pombo_entries(value):
+    """Convert Rocha Pombo term/group indexes into lexical VLF entries.
+
+    A term can participate in several contextual comparisons.  Each comparison
+    is preserved as one sense-like record; the source text and page references
+    remain attached to the entry and no full synonym equivalence is inferred.
+    """
+    groups = value["grupos"]
+    terms = value["termos_para_grupos"]
+
+    for term, group_ids in terms.items():
+        if not isinstance(term, str) or not term.strip():
+            continue
+        if not isinstance(group_ids, (list, tuple)):
+            group_ids = [group_ids]
+
+        senses = []
+        source_groups = []
+        raw_parts = []
+        for position, group_id in enumerate(group_ids, 1):
+            group = groups.get(group_id)
+            if group is None:
+                group = groups.get(str(group_id))
+            if not isinstance(group, dict):
+                continue
+
+            text = group.get("texto_explicativo")
+            heading = group.get("cabecalho")
+            if isinstance(text, str):
+                text = text.strip()
+            else:
+                text = ""
+            if isinstance(heading, str):
+                heading = heading.strip()
+            else:
+                heading = ""
+
+            page_start = group.get("pagina_pdf_inicio")
+            page_end = group.get("pagina_pdf_fim")
+            source_group = {
+                "id": group.get("id", group_id),
+                "heading": heading or None,
+                "page_start": page_start,
+                "page_end": page_end,
+            }
+            source_groups.append(source_group)
+
+            if text:
+                sense = {
+                    "index": position,
+                    "definitions": [text],
+                    "source_group_id": source_group["id"],
+                }
+                if heading:
+                    sense["source_heading"] = heading
+                if page_start is not None:
+                    sense["source_page_start"] = page_start
+                if page_end is not None:
+                    sense["source_page_end"] = page_end
+                senses.append(sense)
+                raw_parts.append(text)
+
+        if not senses:
+            continue
+
+        entry = {
+            "lemma": term.strip(),
+            "senses": senses,
+            "source_groups": source_groups,
+            "source_format": "rocha-pombo-cotejos/1.0",
+        }
+        if raw_parts:
+            entry["raw_definition"] = "\n\n".join(raw_parts)
+        yield entry
+
+
 def pickle_entries(source):
     value = _load_legacy_pickle(source)
+    if _is_rocha_pombo_container(value):
+        yield from _rocha_pombo_entries(value)
+        return
     if isinstance(value, dict) and "entries" in value and isinstance(value["entries"], (list, tuple, dict)):
         value = value["entries"]
     if isinstance(value, dict):
@@ -690,6 +787,29 @@ def _pickle_metadata(source):
     origin = "legacy-" + (origin_tail or "dictionary")
 
     lowered = ascii_stem.casefold()
+    if "rocha" in lowered and "pombo" in lowered:
+        return {
+            "title": "Dicionário de Sinônimos da Língua Portuguesa",
+            "display_name": "Rocha Pombo",
+            "edition_title": (
+                "Dicionário de Sinônimos da Língua Portuguesa — "
+                "2ª edição, Academia Brasileira de Letras, 2011"
+            ),
+            "language": "pt-br",
+            "origin": "abl",
+            "function": "synonyms",
+            "license": "unverified",
+            "license_type": "unspecified",
+            "access": "local",
+            "source_path": str(path),
+            "source_format": "pickle-rocha-pombo",
+            "author": "Rocha Pombo",
+            "publisher": "Academia Brasileira de Letras",
+            "edition": "2ª edição",
+            "release_date": "2011",
+            "capabilities": ["synonyms", "definitions"],
+        }
+
     if "volp" in lowered and ("abl" in lowered or lowered == "volp"):
         return {
             "title": "VOLP",
