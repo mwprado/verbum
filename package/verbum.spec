@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        58%{?dist}
+Release:        59%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,16 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-59
+- Add a direct multi-file BGL / Pickle import path to the import dialog
+- Allow BGL, PKL, Pickle and PKLZ files to be selected together in one batch
+- Detect each standardized import format automatically from its extension
+- Filter the native file chooser to supported BGL and Pickle extensions
+- Convert every selected source independently to its own VLF
+- Continue the batch when one source is already installed or fails
+- Keep Longman and manifest-based formats on their specialized import flows
+- Remove redundant batch-state initialization
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-58
 - Adopt 1024x768 as the minimum reference screen resolution
 - Default the application window to 1024x720 client area for decorated desktops
