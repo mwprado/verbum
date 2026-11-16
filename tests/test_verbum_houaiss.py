@@ -26,6 +26,7 @@ class HouaissImportTests(unittest.TestCase):
         self.assertIn("aceite", cleaned)
         self.assertIn("<casa A;item 1a>", cleaned)
         self.assertIn("–", cleaned)
+        self.assertNotIn(r"\\sp9", cleaned)
 
     def test_pickle_import_preserves_raw_description_and_cleans_display(self):
         with tempfile.TemporaryDirectory() as tmp:
