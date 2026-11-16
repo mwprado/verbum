@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        57%{?dist}
+Release:        58%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,14 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-58
+- Adopt 1024x768 as the minimum reference screen resolution
+- Default the application window to 1024x720 client area for decorated desktops
+- Narrow the dictionary sidebar to preserve content width on 1024-pixel screens
+- Remove horizontal scrolling from the persistent # plus A-Z index
+- Keep all 27 index tabs visible simultaneously at the reference width
+- Reduce index-tab padding and minimum width while preserving clickability
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-57
 - Make the persistent # plus A-Z dictionary index substantially more compact
 - Override GNOME button minimum width and horizontal padding only for index tabs
