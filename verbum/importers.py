@@ -356,8 +356,8 @@ def _legacy_definition(value):
 
 
 
-_HOUAISS_RTF_HEX = re.compile(r"\\\\'([0-9A-Fa-f]{2})")
-_HOUAISS_RTF_CONTROL = re.compile(r"\\\\[A-Za-z]+-?\\d* ?")
+_HOUAISS_RTF_HEX = re.compile(r"\\'([0-9A-Fa-f]{2})")
+_HOUAISS_RTF_CONTROL = re.compile(r"\\[A-Za-z]+-?\d* ?")
 
 
 def _clean_houaiss_markup(text):
