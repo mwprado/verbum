@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        56%{?dist}
+Release:        57%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,13 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Sun Nov 15 2026 Moacyr Prado - 0.5.0-57
+- Make the persistent # plus A-Z dictionary index substantially more compact
+- Override GNOME button minimum width and horizontal padding only for index tabs
+- Let all 27 index tabs share the available width evenly
+- Keep horizontal scrolling only as a fallback for genuinely narrow windows
+- Preserve the two-row dictionary navigation and full verbete panel
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-56
 - Keep the dictionary index visible whenever a specific dictionary is selected
 - Fit the compact # plus A-Z index across the available width before scrolling
