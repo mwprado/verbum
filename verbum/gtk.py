@@ -77,6 +77,27 @@ class Window(Adw.ApplicationWindow):
     def __init__(self, app, registry):
         super().__init__(application=app, title="Verbum", default_width=1100, default_height=740)
         self.registry = registry
+
+        # The # + A..Z strip must behave like narrow physical-dictionary tabs,
+        # not like 27 full GNOME buttons.  Scope the override to this class.
+        self.index_css = Gtk.CssProvider()
+        self.index_css.load_from_data(
+            b"""
+            .alphabet-index {
+                min-width: 0;
+                min-height: 0;
+                padding: 2px 3px;
+                margin: 0;
+                border-radius: 3px;
+            }
+            """
+        )
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            self.index_css,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
         self.pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
         self.generation = 0
         self.detail_generation = 0
@@ -290,19 +311,24 @@ class Window(Adw.ApplicationWindow):
             Gtk.PolicyType.AUTOMATIC,
             Gtk.PolicyType.NEVER,
         )
+        alphabet_scroll.set_overlay_scrolling(True)
         alphabet = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
             spacing=0,
             homogeneous=True,
             hexpand=True,
         )
+        alphabet.set_margin_start(0)
+        alphabet.set_margin_end(0)
         self.alphabet_buttons = {}
         for key in ["#"] + [
             chr(code) for code in range(ord("A"), ord("Z") + 1)
         ]:
             jump = Gtk.Button(label=key)
             jump.add_css_class("flat")
-            jump.set_size_request(24, -1)
+            jump.add_css_class("alphabet-index")
+            jump.set_size_request(14, -1)
+            jump.set_hexpand(True)
             jump.set_tooltip_text(
                 "Números e símbolos" if key == "#"
                 else "Primeiro verbete com " + key
