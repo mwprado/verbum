@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        60%{?dist}
+Release:        61%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,15 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Mon Nov 16 2026 Moacyr Prado - 0.5.0-61
+- Recognize the recovered pure Houaiss PKLZ source explicitly
+- Remove RTF-like inline formatting controls from displayed definitions
+- Decode legacy hexadecimal punctuation escapes such as \\'96
+- Preserve the original Houaiss descricao and raw_definition for auditability
+- Preserve angle-bracketed examples instead of treating them as generic HTML
+- Identify Houaiss as a pt-BR general dictionary with lexical metadata
+- Add regression tests for Houaiss formatting cleanup and source preservation
+
 * Mon Nov 16 2026 Moacyr Prado - 0.5.0-60
 - Recognize the structured Rocha Pombo PKLZ container natively
 - Import its indexed terms as lexical entries instead of four top-level container keys
