@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        59%{?dist}
+Release:        60%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,15 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Mon Nov 16 2026 Moacyr Prado - 0.5.0-60
+- Recognize the structured Rocha Pombo PKLZ container natively
+- Import its indexed terms as lexical entries instead of four top-level container keys
+- Preserve each contextual cotejo as a separate sense-like record
+- Preserve cotejo IDs, headings and PDF page references in the VLF payload
+- Identify Rocha Pombo as a pt-BR synonym dictionary from the Academia Brasileira de Letras
+- Do not infer full synonym equivalence from contextual comparison groups
+- Add regression tests for the Rocha Pombo container schema
+
 * Sun Nov 15 2026 Moacyr Prado - 0.5.0-59
 - Add a direct multi-file BGL / Pickle import path to the import dialog
 - Allow BGL, PKL, Pickle and PKLZ files to be selected together in one batch
