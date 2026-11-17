@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        61%{?dist}
+Release:        62%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,13 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Mon Nov 16 2026 Moacyr Prado - 0.5.0-62
+- Restore the original import-format dialog and Continue workflow
+- Remove the temporary BGL / Pickle shortcut that changed the importer UI
+- Keep multi-file selection for BGL and Pickle/PKLZ through their existing format entries
+- Keep sequential batch conversion of each selected source into its own VLF
+- Preserve the Rocha Pombo and Houaiss importer fixes from releases 60 and 61
+
 * Mon Nov 16 2026 Moacyr Prado - 0.5.0-61
 - Recognize the recovered pure Houaiss PKLZ source explicitly
 - Remove RTF-like inline formatting controls from displayed definitions
