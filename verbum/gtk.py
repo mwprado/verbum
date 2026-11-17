@@ -90,6 +90,11 @@ class Window(Adw.ApplicationWindow):
                 margin: 0;
                 border-radius: 2px;
             }
+            .alphabet-index-current {
+                color: @accent_color;
+                background-color: alpha(@accent_color, 0.14);
+                font-weight: 700;
+            }
             """
         )
         Gtk.StyleContext.add_provider_for_display(
@@ -635,9 +640,9 @@ class Window(Adw.ApplicationWindow):
 
         for key, control in self.alphabet_buttons.items():
             if key == index:
-                control.add_css_class("suggested-action")
+                control.add_css_class("alphabet-index-current")
             else:
-                control.remove_css_class("suggested-action")
+                control.remove_css_class("alphabet-index-current")
 
     def show_browse_hit(self, hit):
         if hit is None:
