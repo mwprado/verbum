@@ -58,20 +58,6 @@ SOURCE_NAMES = {
 }
 
 
-def standard_import_format(path):
-    """Return the standardized local importer selected by a file extension."""
-    suffix = Path(path).suffix.casefold()
-    fmt_id = {
-        ".bgl": "bgl",
-        ".pkl": "pickle",
-        ".pickle": "pickle",
-        ".pklz": "pickle",
-    }.get(suffix)
-    if fmt_id is None:
-        return None
-    return next((fmt for fmt in IMPORT_FORMATS if fmt["id"] == fmt_id), None)
-
-
 def dictionary_identity(manifest):
     """Return compact source name and optional edition title for display."""
     if not isinstance(manifest, dict):
@@ -1272,15 +1258,8 @@ class Window(Adw.ApplicationWindow):
         if getattr(self, "import_dialog", None):
             self.import_dialog.present()
             return
-        dialog = Adw.MessageDialog(
-            transient_for=self,
-            heading="Importar dicionário",
-            body=(
-                "BGL e Pickle/PKLZ podem ser selecionados em lote e têm o "
-                "formato identificado automaticamente. Para outras fontes, "
-                "selecione o formato abaixo."
-            ),
-        )
+        dialog = Adw.MessageDialog(transient_for=self, heading="Importar dicionário",
+            body="Selecione o formato da fonte que deseja importar.")
         self.import_dialog = dialog
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         self.import_format = Gtk.DropDown.new_from_strings([fmt["title"] for fmt in IMPORT_FORMATS])
@@ -1300,17 +1279,13 @@ class Window(Adw.ApplicationWindow):
             box.append(label("Importadores em desenvolvimento: " + ", ".join(pending), "caption"))
         dialog.set_extra_child(box)
         dialog.add_response("cancel", "Cancelar")
-        if not rebuild:
-            dialog.add_response("standard", "Selecionar BGL / Pickle…")
-        dialog.add_response("next", "Outros formatos…")
-        dialog.set_default_response("standard" if not rebuild else "next")
+        dialog.add_response("next", "Continuar")
+        dialog.set_default_response("next")
         dialog.set_close_response("cancel")
         def response(_, choice):
             fmt = IMPORT_FORMATS[self.import_format.get_selected()]
             self.import_dialog = None
-            if choice == "standard":
-                self.choose_standard_sources()
-            elif choice == "next":
+            if choice == "next":
                 self.choose_source(fmt, rebuild)
         dialog.connect("response", response)
         dialog.present()
@@ -1336,65 +1311,6 @@ class Window(Adw.ApplicationWindow):
         else:
             self.choose_source(fmt, rebuild=m["slug"])
 
-    def choose_standard_sources(self):
-        self.choose_file(
-            "Selecione um ou mais dicionários BGL / Pickle",
-            Gtk.FileChooserAction.OPEN,
-            self.confirm_standard_import_batch,
-            multiple=True,
-            patterns=["*.bgl", "*.BGL", "*.pkl", "*.PKL",
-                      "*.pickle", "*.PICKLE", "*.pklz", "*.PKLZ"],
-        )
-
-    def confirm_standard_import_batch(self, paths):
-        paths = [str(Path(path)) for path in paths if path]
-        supported = [
-            path for path in paths if standard_import_format(path) is not None
-        ]
-        unsupported = [path for path in paths if path not in supported]
-        if not supported:
-            self.show_error_dialog(
-                "Nenhum arquivo compatível",
-                "Selecione arquivos .bgl, .pkl, .pickle ou .pklz.",
-            )
-            return None
-
-        preview = "\n".join(
-            "• " + Path(path).name for path in supported[:10]
-        )
-        if len(supported) > 10:
-            preview += f"\n• … e mais {len(supported) - 10}"
-
-        body = (
-            preview
-            + "\n\nCada arquivo será identificado automaticamente e "
-              "convertido para seu próprio VLF."
-        )
-        if unsupported:
-            body += (
-                f"\n\n{len(unsupported)} arquivo(s) incompatível(is) "
-                "serão ignorados."
-            )
-
-        dialog = Adw.MessageDialog(
-            transient_for=self,
-            heading=f"Importar {len(supported)} dicionário(s)?",
-            body=body,
-        )
-        dialog.add_response("cancel", "Cancelar")
-        dialog.add_response("import", "Importar todos")
-        dialog.set_default_response("import")
-        dialog.set_close_response("cancel")
-        dialog.connect(
-            "response",
-            lambda _, choice: (
-                self.start_import_batch(None, supported)
-                if choice == "import" else None
-            ),
-        )
-        dialog.present()
-        return dialog
-
     def choose_source(self, fmt, rebuild=None):
         action = Gtk.FileChooserAction.SELECT_FOLDER if fmt["directory"] else Gtk.FileChooserAction.OPEN
         multiple = bool(fmt.get("multiple")) and not rebuild and not fmt["directory"]
@@ -1412,9 +1328,7 @@ class Window(Adw.ApplicationWindow):
             multiple=multiple,
         )
 
-    def choose_file(
-        self, title, action, callback, *, multiple=False, patterns=None
-    ):
+    def choose_file(self, title, action, callback, *, multiple=False):
         chooser = Gtk.FileChooserNative(
             title=title,
             transient_for=self,
@@ -1423,13 +1337,6 @@ class Window(Adw.ApplicationWindow):
             cancel_label="Cancelar",
         )
         chooser.set_select_multiple(bool(multiple))
-        if patterns:
-            file_filter = Gtk.FileFilter()
-            file_filter.set_name("Arquivos compatíveis")
-            for pattern in patterns:
-                file_filter.add_pattern(pattern)
-            chooser.add_filter(file_filter)
-            chooser.set_filter(file_filter)
         self.source_chooser = chooser
 
         def response(dialog, code):
@@ -1577,6 +1484,7 @@ class Window(Adw.ApplicationWindow):
         self.importing = True
         self.import_cancel = threading.Event()
         self.import_stage = ("prepare", 0, None)
+        self.import_batch_current = None
         self.import_batch_current = (1, len(paths), Path(paths[0]).name)
         self.import_action.set_enabled(False)
         self.cancel_import_button.set_sensitive(True)
@@ -1586,11 +1494,8 @@ class Window(Adw.ApplicationWindow):
         ):
             control.set_sensitive(False)
 
-        batch_title = (
-            fmt["title"] if fmt is not None else "BGL / Pickle"
-        )
         self.import_title.set_text(
-            f"Importando {len(paths)} arquivos — {batch_title}"
+            f"Importando {len(paths)} arquivos — {fmt['title']}"
         )
         self.import_progress.set_fraction(0)
         self.import_panel.set_visible(True)
@@ -1616,16 +1521,11 @@ class Window(Adw.ApplicationWindow):
                 self.import_stage = ("prepare", 0, None)
 
                 try:
-                    current_fmt = fmt or standard_import_format(path)
-                    if current_fmt is None:
-                        raise ValueError(
-                            "Formato não reconhecido: " + Path(path).suffix
-                        )
                     result = import_dictionary(
                         self.registry,
                         None,
                         path,
-                        current_fmt["id"],
+                        fmt["id"],
                         progress=report,
                         cancel=self.import_cancel,
                     )
