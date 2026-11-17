@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        63%{?dist}
+Release:        64%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,12 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Mon Nov 16 2026 Moacyr Prado - 0.5.0-64
+- Keep the active alphabet index letter visible after selection
+- Replace the suggested-action state with a dedicated compact index highlight
+- Render the current index using the libadwaita accent color, bold text and a subtle accent background
+- Preserve the compact # A-Z layout and dark-theme compatibility
+
 * Mon Nov 16 2026 Moacyr Prado - 0.5.0-63
 - Fix Rocha Pombo import failure caused by the human-readable edition string in the VLF slug
 - Store edition as the token-safe identifier 2 while retaining 2ª edição in the display title
