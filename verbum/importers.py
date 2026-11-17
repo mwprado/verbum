@@ -927,7 +927,7 @@ def _pickle_metadata(source):
             "source_format": "pickle-rocha-pombo",
             "author": "Rocha Pombo",
             "publisher": "Academia Brasileira de Letras",
-            "edition": "2ª edição",
+            "edition": "2",
             "release_date": "2011",
             "capabilities": ["synonyms", "definitions"],
         }
