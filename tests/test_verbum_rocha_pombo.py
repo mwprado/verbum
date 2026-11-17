@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from verbum.core import manifest_info
 from verbum.importers import pickle_entries, _pickle_metadata
 
 
@@ -74,6 +75,9 @@ class RochaPomboImportTests(unittest.TestCase):
             self.assertEqual(metadata["function"], "synonyms")
             self.assertEqual(metadata["language"], "pt-br")
             self.assertEqual(metadata["origin"], "abl")
+            self.assertEqual(metadata["edition"], "2")
+            manifest = manifest_info(metadata)
+            self.assertEqual(manifest["slug"], "pt-br-abl-synonyms-2")
 
 
 if __name__ == "__main__":
