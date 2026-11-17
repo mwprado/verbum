@@ -6,7 +6,7 @@
 
 Name:           verbum
 Version:        0.5.0
-Release:        62%{?dist}
+Release:        63%{?dist}
 Summary:        Multilingual dictionary and lexical service for GNOME
 
 License:        MIT AND GPL-3.0-or-later
@@ -131,6 +131,11 @@ update-mime-database mime-check
 %{_datadir}/metainfo/%{appid}.metainfo.xml
 
 %changelog
+* Mon Nov 16 2026 Moacyr Prado - 0.5.0-63
+- Fix Rocha Pombo import failure caused by the human-readable edition string in the VLF slug
+- Store edition as the token-safe identifier 2 while retaining 2ª edição in the display title
+- Add regression coverage through VLF manifest validation
+
 * Mon Nov 16 2026 Moacyr Prado - 0.5.0-62
 - Restore the original import-format dialog and Continue workflow
 - Remove the temporary BGL / Pickle shortcut that changed the importer UI
