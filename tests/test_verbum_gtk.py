@@ -20,7 +20,7 @@ class GtkTests(unittest.TestCase):
             row = Gtk.ListBoxRow()
             row.hit = hit
             win.select_result(win.results, row)
-            self.assertEqual(win.detail.get_first_child().get_text(), "sample")
+            self.assertEqual(win.detail.get_first_child().get_first_child().get_text(), "sample")
             row.hit = dict(hit, entry={"lemma":"sample","definitions":["Synthetic entry"],"examples":["sample phrase"]})
             win.select_result(win.results, row)
             self.assertEqual(win.detail.get_first_child().get_text(), "sample")
