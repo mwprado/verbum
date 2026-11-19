@@ -679,6 +679,113 @@ def _looks_like_legacy_entry(value):
     return False
 
 
+def _is_luft_regency_container(value):
+    """Recognize the structured OCR containers used by the Luft dictionaries."""
+    if not isinstance(value, dict):
+        return False
+    if not {"metadados", "entradas", "indice", "estatisticas"}.issubset(value):
+        return False
+    metadata = value.get("metadados")
+    entries = value.get("entradas")
+    if not isinstance(metadata, dict) or not isinstance(entries, (list, tuple, dict)):
+        return False
+    kind = str(metadata.get("tipo") or metadata.get("type") or "").casefold()
+    title = str(metadata.get("titulo") or metadata.get("title") or "").casefold()
+    return "regencia" in kind or "regência" in title or "luft" in title
+
+
+def _luft_regency_entries(value):
+    """Convert Luft OCR records into lexical VLF entries.
+
+    OCR/page-layout bookkeeping is deliberately not promoted to display fields.
+    The useful lexical content is exposed as definition/grammar/regency data.
+    """
+    records = value.get("entradas")
+    if isinstance(records, dict):
+        iterable = records.values()
+    else:
+        iterable = records
+
+    for record in iterable:
+        if not isinstance(record, dict):
+            continue
+
+        lemma = (
+            record.get("lema")
+            or record.get("lemma")
+            or record.get("verbete")
+            or record.get("palavra")
+        )
+        if not lemma:
+            lemmas = record.get("lemas")
+            if isinstance(lemmas, (list, tuple)) and lemmas:
+                lemma = lemmas[0]
+        if isinstance(lemma, bytes):
+            lemma = lemma.decode("utf-8", errors="replace")
+        if not isinstance(lemma, str) or not lemma.strip():
+            continue
+
+        text = (
+            record.get("texto_ocr")
+            or record.get("texto")
+            or record.get("definicao")
+            or record.get("definição")
+            or record.get("descricao")
+            or record.get("descrição")
+        )
+        if isinstance(text, (list, tuple)):
+            text = "\n".join(
+                str(item).strip() for item in text if str(item).strip()
+            )
+        elif text is not None:
+            text = str(text).strip()
+        else:
+            lines = record.get("linhas_ocr")
+            if isinstance(lines, (list, tuple)):
+                text = "\n".join(
+                    str(item).strip() for item in lines if str(item).strip()
+                )
+            else:
+                text = ""
+
+        entry = {"lemma": lemma.strip()}
+        if text:
+            entry["definition"] = text
+            entry["raw_definition"] = text
+
+        grammar = (
+            record.get("classe_gramatical_ocr")
+            or record.get("classe_gramatical")
+            or record.get("classe")
+        )
+        if grammar:
+            entry["grammar"] = {"pos": [str(grammar).strip()]}
+
+        declared = record.get("regencias_declaradas_ocr")
+        if declared is None:
+            declared = record.get("regencias_declaradas")
+        structures = record.get("estruturas_declaradas_ocr")
+        if structures is None:
+            structures = record.get("estruturas_declaradas")
+        prepositions = record.get("preposicoes_candidatas")
+
+        regency = {}
+        if declared:
+            regency["patterns"] = _json_safe_legacy(declared)
+        if structures:
+            regency["structures"] = _json_safe_legacy(structures)
+        if prepositions:
+            regency["prepositions"] = _json_safe_legacy(prepositions)
+        if regency:
+            entry["regency"] = regency
+
+        initial = record.get("padrao_inicial_ocr")
+        if initial:
+            entry["regency_heading"] = str(initial).strip()
+
+        yield entry
+
+
 def _legacy_record_is_empty(record, lemma=None):
     """True only for legacy container records that carry no lexical payload."""
     if isinstance(lemma, bytes):
@@ -850,6 +957,9 @@ def pickle_entries(source):
     if _is_rocha_pombo_container(value):
         yield from _rocha_pombo_entries(value)
         return
+    if _is_luft_regency_container(value):
+        yield from _luft_regency_entries(value)
+        return
     if isinstance(value, dict) and "entries" in value and isinstance(value["entries"], (list, tuple, dict)):
         value = value["entries"]
     if isinstance(value, dict):
@@ -930,6 +1040,28 @@ def _pickle_metadata(source):
             "edition": "2",
             "release_date": "2011",
             "capabilities": ["synonyms", "definitions"],
+        }
+
+    if "luft" in lowered and ("reg" in lowered or "regencia" in lowered):
+        nominal = "nom" in lowered or "nominal" in lowered
+        title = (
+            "Dicionário Prático de Regência Nominal"
+            if nominal else "Dicionário Prático de Regência Verbal"
+        )
+        return {
+            "title": title,
+            "display_name": "Luft",
+            "edition_title": title + " — Celso Pedro Luft",
+            "language": "pt-br",
+            "origin": "luft",
+            "function": "regency",
+            "license": "unverified",
+            "license_type": "unspecified",
+            "access": "local",
+            "source_path": str(path),
+            "source_format": "pickle-luft-regency",
+            "author": "Celso Pedro Luft",
+            "capabilities": ["definitions", "grammar", "regency"],
         }
 
     if "volp" in lowered and ("abl" in lowered or lowered == "volp"):
